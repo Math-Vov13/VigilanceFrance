@@ -1,13 +1,15 @@
 import express, { Request, Response } from 'express';
 import { router as AuthRouter } from './endpoints/users';
+import morgan from 'morgan';
+import { debug } from 'node:console';
 
 // Vars
 const app = express();
-const PORT = process.env["PORT"] || 8001;
+const PORT = process.env["PORT"] || 3000;
 
 // Middlewares
-app.use("", AuthRouter);
-
+app.use("/account", AuthRouter);
+app.use(morgan("dev"));
 
 // Endpoint
 app.get('/', (req: Request, res: Response) => {
@@ -17,7 +19,7 @@ app.get('/', (req: Request, res: Response) => {
 
 
 // Server Listen
-app.listen(PORT, (err) => {
+const server = app.listen(PORT, (err) => {
     if (err !== undefined) {
         console.error("[server]: Error while running server:", err);
         return;
@@ -25,3 +27,11 @@ app.listen(PORT, (err) => {
 
     console.log(`[server]: Running Server on http://localhost:${PORT}`);
 });
+
+// Close Server with Event
+process.on("SIGTERM", () => {
+    debug('SIGTERM signal received: closing HTTP server');
+    server.close(() => {
+        debug('HTTP server closed!');
+    })
+})

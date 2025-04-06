@@ -2,6 +2,10 @@ import { Request, Response, Router } from "express";
 
 export const router = Router();
 
+router.get("/", (req: Request, res: Response) => {
+    res.send("Account endpoint.");
+})
+
 router.post("/register", (req: Request, res: Response) => {
     // Créer la Session
 })
