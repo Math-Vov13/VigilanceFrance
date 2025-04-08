@@ -40,6 +40,8 @@ export function AuthForms() {
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+
+    
     
     try {
       await login(loginData.email, loginData.password);
