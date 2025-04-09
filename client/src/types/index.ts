@@ -14,9 +14,12 @@ export interface AuthContextType {
   login: (email: string, password: string) => Promise<ApiResponse<User>>;
   register: (userData: Omit<User, 'id'> & { password: string }) => Promise<void>;
   logout: () => Promise<void>;
-  googleAuth: (token: string) => Promise<ApiResponse<{ user: User; token: string }>>;
-  franceConnectAuth: (code: string) => Promise<ApiResponse<{ user: User; token: string }>>;
+  googleAuth: (token: string) => Promise<ApiResponse<User>>;
+  franceConnectAuth: (code: string) => Promise<ApiResponse<User>>;
+  refreshAuthToken: () => Promise<boolean>; // New function for token refresh
   isAuthenticated: boolean;
+  loading: boolean;
+  error: string | null;
 }
 
 // Incident-related types

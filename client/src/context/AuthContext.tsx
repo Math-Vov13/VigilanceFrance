@@ -1,4 +1,4 @@
-import { createContext, useState, ReactNode, useEffect, useMemo, useCallback} from 'react';
+import { createContext, useState, ReactNode, useEffect, useMemo, useCallback, useContext } from 'react';
 import { User, AuthContextType } from '../types';
 import { ApiResponse, authApi } from '../services/api';
 import { AxiosError } from 'axios';
@@ -13,20 +13,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Check if user is already logged in on app initialization
   useEffect(() => {
     const checkAuthStatus = async () => {
-      const token = localStorage.getItem('auth_token');
-      if (!token) {
+      // Check if we have a refresh token
+      const refreshToken = localStorage.getItem('refresh_token');
+      if (!refreshToken) {
         setLoading(false);
         return;
       }
 
       try {
+        // No need to send the auth token - it's in the HTTP-only cookie
         const response = await authApi.verifyToken();
         if (response.data.data.user) {
           setUser(response.data.data.user);
         }
       } catch (err) {
         // Token invalid or expired, clear it
-        localStorage.removeItem('auth_token');
+        localStorage.removeItem('refresh_token');
         console.error('Auth token verification failed:', err);
       } finally {
         setLoading(false);
@@ -36,29 +38,56 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     checkAuthStatus();
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
+  // Refresh token function
+  const refreshAuthToken = useCallback(async (): Promise<boolean> => {
+    try {
+      const response = await authApi.refreshToken();
+      const { refreshToken } = response.data.data;
+      
+      // Update refresh token in localStorage
+      // (Auth token is updated in HTTP-only cookie by the server)
+      if (refreshToken) {
+        localStorage.setItem('refresh_token', refreshToken);
+      }
+      
+      return true;
+    } catch (err) {
+      console.error('Failed to refresh auth token:', err);
+      localStorage.removeItem('refresh_token');
+      setUser(null);
+      return false;
+    }
+  }, []);
+
+  const login = useCallback(async (email: string, password: string): Promise<ApiResponse<User>> => {
     setLoading(true);
     setError(null);
     
     try {
       const response = await authApi.login(email, password);
-      const { user, token } = response.data.data;
+      const { user, refreshToken } = response.data.data;
       
-      // Save auth token
-      localStorage.setItem('auth_token', token);
+      // Save refresh token in localStorage
+      // (Auth token is set as HTTP-only cookie by the server)
+      localStorage.setItem('refresh_token', refreshToken);
       
       setUser({
         id: user.id,
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
-        profileImage: user.profileImage || undefined
+        profileImage: user.profileImage ?? undefined
       });
       
-      return { success: true, data: user };
+      // Return only the user part in the API response to match the expected type
+      return {
+        success: response.data.success,
+        message: response.data.message,
+        data: user
+      };
     } catch (err) {
       const error = err as AxiosError<ApiResponse<null>>;
-      const errorMessage = error.response?.data?.message || 'Une erreur est survenue lors de la connexion';
+      const errorMessage = error.response?.data?.message ?? 'Une erreur est survenue lors de la connexion';
       setError(errorMessage);
       throw new Error(errorMessage);
     } finally {
@@ -66,16 +95,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [setLoading, setError, setUser]);
 
-  const register = useCallback(async (userData: Omit<User, 'id'> & { password: string }) => {
+  const register = useCallback(async (userData: Omit<User, 'id'> & { password: string }): Promise<void> => {
     setLoading(true);
     setError(null);
     
     try {
       const response = await authApi.register(userData);
-      const { user, token } = response.data.data;
+      const { user, refreshToken } = response.data.data;
       
-      // Save auth token
-      localStorage.setItem('auth_token', token);
+      // Save refresh token in localStorage
+      // (Auth token is set as HTTP-only cookie by the server)
+      localStorage.setItem('refresh_token', refreshToken);
       
       // Update state with user data
       setUser({
@@ -83,13 +113,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
-        profileImage: user.profileImage || undefined
+        profileImage: user.profileImage ?? undefined
       });
       
-      return authApi.register(userData).then(() => {});
+      // No return value
     } catch (err) {
       const error = err as AxiosError<ApiResponse<null>>;
-      const errorMessage = error.response?.data?.message || 'Une erreur est survenue lors de l\'inscription';
+      const errorMessage = error.response?.data?.message ?? 'Une erreur est survenue lors de l\'inscription';
       setError(errorMessage);
       throw new Error(errorMessage);
     } finally {
@@ -97,43 +127,51 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [setLoading, setError, setUser]);
 
-  const logout = useCallback(async () => {
+  const logout = useCallback(async (): Promise<void> => {
     setLoading(true);
     
     try {
-      // Call logout API to invalidate token on server
+      // Call logout API to invalidate tokens on server and clear the HTTP-only cookie
       await authApi.logout();
     } catch (err) {
       console.error('Logout error:', err);
     } finally {
-      // Clear token and user data regardless of API success
-      localStorage.removeItem('auth_token');
+      // Clear refresh token and user data regardless of API success
+      localStorage.removeItem('refresh_token');
       setUser(null);
       setLoading(false);
     }
   }, [setLoading, setUser]);
 
-  const googleAuth = useCallback(async (token: string) => {
+  const googleAuth = useCallback(async (token: string): Promise<ApiResponse<User>> => {
     setLoading(true);
     setError(null);
     
     try {
       const response = await authApi.googleAuth(token);
-      const { user, token: authToken } = response.data.data;
+      const { user, refreshToken } = response.data.data;
       
-      localStorage.setItem('auth_token', authToken);
+      // Save refresh token in localStorage
+      // (Auth token is set as HTTP-only cookie by the server)
+      localStorage.setItem('refresh_token', refreshToken);
+      
       setUser({
         id: user.id,
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
-        profileImage: user.profileImage || undefined
+        profileImage: user.profileImage ?? undefined
       });
       
-      return response.data;
+      // Return only the user part in the API response to match the expected type
+      return {
+        success: response.data.success,
+        message: response.data.message,
+        data: user
+      };
     } catch (err) {
       const error = err as AxiosError<ApiResponse<null>>;
-      const errorMessage = error.response?.data?.message || 'Une erreur est survenue avec l\'authentification Google';
+      const errorMessage = error.response?.data?.message ?? 'Une erreur est survenue avec l\'authentification Google';
       setError(errorMessage);
       throw new Error(errorMessage);
     } finally {
@@ -141,27 +179,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [setLoading, setError, setUser]);
   
-  const franceConnectAuth = useCallback(async (code: string) => {
+  const franceConnectAuth = useCallback(async (code: string): Promise<ApiResponse<User>> => {
     setLoading(true);
     setError(null);
     
     try {
       const response = await authApi.franceConnectAuth(code);
-      const { user, token: authToken } = response.data.data;
+      const { user, refreshToken } = response.data.data;
       
-      localStorage.setItem('auth_token', authToken);
+      // Save refresh token in localStorage
+      // (Auth token is set as HTTP-only cookie by the server)
+      localStorage.setItem('refresh_token', refreshToken);
+      
       setUser({
         id: user.id,
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
-        profileImage: user.profileImage || undefined
+        profileImage: user.profileImage ?? undefined
       });
       
-      return response.data;
+      // Return only the user part in the API response to match the expected type
+      return {
+        success: response.data.success,
+        message: response.data.message,
+        data: user
+      };
     } catch (err) {
       const error = err as AxiosError<ApiResponse<null>>;
-      const errorMessage = error.response?.data?.message || 'Une erreur est survenue avec FranceConnect';
+      const errorMessage = error.response?.data?.message ?? 'Une erreur est survenue avec FranceConnect';
       setError(errorMessage);
       throw new Error(errorMessage);
     } finally {
@@ -176,15 +222,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     logout,
     googleAuth,
     franceConnectAuth,
+    refreshAuthToken,
     isAuthenticated: !!user,
     loading,
     error
-  }), [user, login, register, logout, googleAuth, franceConnectAuth, loading, error]);
+  }), [user, login, register, logout, googleAuth, franceConnectAuth, refreshAuthToken, loading, error]);
 
   return (
     <AuthContext.Provider value={authContextValue}>
-    {children}
-  </AuthContext.Provider>
+      {children}
+    </AuthContext.Provider>
   );
 };
 
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
