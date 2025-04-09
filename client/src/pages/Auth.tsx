@@ -3,19 +3,7 @@ import { Footer } from '../components/layout/Footer';
 import { AuthForms } from '../components/auth/AuthForms';
 import { motion } from 'framer-motion';
 
-import { useAuthStore } from '@/store/authStore';
-import { useNavigate } from 'react-router-dom';
-import { useEffect } from 'react';
-
 export default function Auth() {
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/');
-    }
-  }, [isAuthenticated, navigate]);
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />

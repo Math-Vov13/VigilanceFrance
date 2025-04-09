@@ -1,96 +1,87 @@
 import { useState } from 'react';
-import { useAuth } from '../../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/useAuth';
+import { useNavigate, Link } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { Label } from '../ui/label';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import { Checkbox } from '../ui/checkbox';
 import { useToast } from '../ui/use-toast';
 import { motion } from 'framer-motion';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { useForm, FieldValues } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { loginSchema, registerSchema, LoginFormValues, RegisterFormValues } from '../../schemas/authSchemas';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
 
-import { FranceConnectButton} from '../ui/franceConnectButton';
+import { FranceConnectButton } from '../ui/franceConnectButton';
 
 export function AuthForms() {
-  const { login, register } = useAuth();
+  const { login, register: registerUser, googleAuth, franceConnectAuth } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
-  // Login form state
-  const [loginData, setLoginData] = useState({
-    email: '',
-    password: '',
-    rememberMe: false,
+  // Login form with react-hook-form and zod
+  const loginForm = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+      rememberMe: false
+    }
   });
   
-  // Register form state
-  const [registerData, setRegisterData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    acceptTerms: false,
+  // Register form with react-hook-form and zod
+  const registerForm = useForm<RegisterFormValues>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      firstName: '',
+      lastName: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+      acceptTerms: false
+    }
   });
   
-  const handleLoginSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleLoginSubmit = async (values: FieldValues) => {
+    const loginValues = values as LoginFormValues;
     setIsSubmitting(true);
-
-    
+    setError(null);
     
     try {
-      await login(loginData.email, loginData.password);
+      await login(loginValues.email, loginValues.password);
       toast({
         title: "Connexion réussie",
         description: "Bienvenue sur VigilanceFrance",
       });
       navigate('/map');
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Une erreur est survenue lors de la connexion";
+      setError(errorMessage);
       toast({
         title: "Erreur de connexion",
-        description: "Email ou mot de passe incorrect",
+        description: errorMessage,
         variant: "destructive",
       });
-      console.error(error);
     } finally {
       setIsSubmitting(false);
     }
   };
   
-  const handleRegisterSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (registerData.password !== registerData.confirmPassword) {
-      toast({
-        title: "Erreur d'inscription",
-        description: "Les mots de passe ne correspondent pas",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (!registerData.acceptTerms) {
-      toast({
-        title: "Erreur d'inscription",
-        description: "Vous devez accepter les conditions d'utilisation",
-        variant: "destructive",
-      });
-      return;
-    }
-    
+  const handleRegisterSubmit = async (values: RegisterFormValues) => {
     setIsSubmitting(true);
+    setError(null);
     
     try {
-      await register({
-        firstName: registerData.firstName,
-        lastName: registerData.lastName,
-        email: registerData.email,
-        password: registerData.password,
+      await registerUser({
+        firstName: values.firstName,
+        lastName: values.lastName,
+        email: values.email,
+        password: values.password,
       });
       toast({
         title: "Inscription réussie",
@@ -98,33 +89,60 @@ export function AuthForms() {
       });
       navigate('/map');
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Une erreur est survenue lors de l'inscription";
+      setError(errorMessage);
       toast({
         title: "Erreur d'inscription",
-        description: "Une erreur s'est produite lors de l'inscription",
+        description: errorMessage,
         variant: "destructive",
       });
-      console.error(error);
     } finally {
       setIsSubmitting(false);
     }
   };
   
-  // Fonction pour gérer la connexion avec Google
-  const handleGoogleLogin = () => {
-    toast({
-      title: "Connexion Google",
-      description: "Redirection vers l'authentification Google...",
-    });
-    // Implémentation réelle à ajouter
+  const handleGoogleLogin = async () => {
+    try {
+      const googleToken = "mock_google_token";
+      
+      await googleAuth(googleToken);
+      toast({
+        title: "Connexion Google réussie",
+        description: "Bienvenue sur VigilanceFrance",
+      });
+      navigate('/map');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Une erreur est survenue avec l'authentification Google";
+      setError(errorMessage);
+      toast({
+        title: "Erreur de connexion",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    }
   };
 
   // Fonction pour gérer la connexion avec FranceConnect
-  const handleFranceConnectLogin = () => {
-    toast({
-      title: "Connexion FranceConnect",
-      description: "Redirection vers FranceConnect...",
-    });
-    // Implémentation réelle à ajouter
+  const handleFranceConnectLogin = async () => {
+    try {
+      // This would be replaced with actual FranceConnect OAuth flow
+      const franceConnectCode = "mock_fc_code"; // would come from FranceConnect redirect
+      
+      await franceConnectAuth(franceConnectCode);
+      toast({
+        title: "Connexion FranceConnect réussie",
+        description: "Bienvenue sur VigilanceFrance",
+      });
+      navigate('/map');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Une erreur est survenue avec FranceConnect";
+      setError(errorMessage);
+      toast({
+        title: "Erreur de connexion",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -144,6 +162,16 @@ export function AuthForms() {
             </p>
           </motion.div>
         </div>
+        
+        {/* Display global error if exists */}
+        {error && (
+          <div className="px-6 pt-4 -mb-2">
+            <div className="bg-red-50 text-red-800 px-4 py-2 rounded-md flex items-start">
+              <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
+              <span className="text-sm">{error}</span>
+            </div>
+          </div>
+        )}
         
         <Tabs defaultValue="login" className="w-full p-6">
           <TabsList className="grid w-full grid-cols-2 mb-6">
@@ -165,6 +193,7 @@ export function AuthForms() {
                   variant="outline" 
                   className="w-full border-gray-300 hover:bg-gray-50 flex items-center justify-center"
                   onClick={handleGoogleLogin}
+                  disabled={isSubmitting}
                 >
                   <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24">
                     <path 
@@ -186,7 +215,7 @@ export function AuthForms() {
                   </svg>
                   Google
                 </Button>
-                <FranceConnectButton onClick={handleFranceConnectLogin} />
+                <FranceConnectButton onClick={handleFranceConnectLogin} disabled={isSubmitting} />
               </div>
 
               <div className="relative flex items-center justify-center">
@@ -194,73 +223,92 @@ export function AuthForms() {
                 <span className="relative px-2 bg-white text-sm text-gray-500">ou avec email</span>
               </div>
 
-              <motion.form 
-                onSubmit={handleLoginSubmit} 
-                className="space-y-6"
-              >
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-gray-700">Adresse email</Label>
-                <Input 
-                  id="email" 
-                  type="email" 
-                  placeholder="votre@email.com"
-                  value={loginData.email}
-                  onChange={(e) => setLoginData({...loginData, email: e.target.value})}
-                  className="border-blue-100 focus:border-blue-300"
-                  required
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-gray-700">Mot de passe</Label>
-                <div className="relative">
-                  <Input 
-                    id="password" 
-                    type={showPassword ? "text" : "password"}
-                    placeholder="••••••••"
-                    value={loginData.password}
-                    onChange={(e) => setLoginData({...loginData, password: e.target.value})}
-                    className="border-blue-100 focus:border-blue-300 pr-10"
-                    required
+              <Form {...loginForm}>
+                <form onSubmit={loginForm.handleSubmit(handleLoginSubmit)} className="space-y-6">
+                  <FormField
+                    control={loginForm.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-gray-700">Adresse email</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="votre@email.com"
+                            type="email"
+                            className="border-blue-100 focus:border-blue-300"
+                            disabled={isSubmitting}
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage className="text-xs" />
+                      </FormItem>
+                    )}
                   />
-                  <button 
-                    type="button"
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                    onClick={() => setShowPassword(!showPassword)}
+                  
+                  <FormField
+                    control={loginForm.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-gray-700">Mot de passe</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Input 
+                              placeholder="••••••••"
+                              type={showPassword ? "text" : "password"}
+                              className="border-blue-100 focus:border-blue-300 pr-10"
+                              disabled={isSubmitting}
+                              {...field} 
+                            />
+                            <button 
+                              type="button"
+                              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                              onClick={() => setShowPassword(!showPassword)}
+                              disabled={isSubmitting}
+                            >
+                              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
+                          </div>
+                        </FormControl>
+                        <FormMessage className="text-xs" />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={loginForm.control}
+                    name="rememberMe"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center space-x-2">
+                        <FormControl>
+                          <Checkbox 
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            className="data-[state=checked]:bg-blue-600"
+                            disabled={isSubmitting}
+                          />
+                        </FormControl>
+                        <div className="space-x-1 flex justify-between items-center w-full">
+                          <FormLabel className="text-sm text-gray-600">
+                            Se souvenir de moi
+                          </FormLabel>
+                          <Button variant="link" className="p-0 h-auto text-blue-600" disabled={isSubmitting}>
+                            Mot de passe oublié?
+                          </Button>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 transition-all" 
+                    disabled={isSubmitting}
                   >
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="remember-me" 
-                    checked={loginData.rememberMe}
-                    onCheckedChange={(checked) => 
-                      setLoginData({...loginData, rememberMe: checked as boolean})
-                    }
-                    className="data-[state=checked]:bg-blue-600"
-                  />
-                  <Label htmlFor="remember-me" className="text-sm text-gray-600">
-                    Se souvenir de moi
-                  </Label>
-                </div>
-                
-                <Button variant="link" className="p-0 h-auto text-blue-600">
-                  Mot de passe oublié?
-                </Button>
-              </div>
-              
-              <Button 
-                type="submit" 
-                className="w-full bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 transition-all" 
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? 'Connexion en cours...' : 'Se connecter'}
-              </Button>
-            </motion.form>
+                    {isSubmitting ? 'Connexion en cours...' : 'Se connecter'}
+                  </Button>
+                </form>
+              </Form>
             </motion.div>
           </TabsContent>
           
@@ -278,6 +326,7 @@ export function AuthForms() {
                   variant="outline" 
                   className="w-full border-gray-300 hover:bg-gray-50 flex items-center justify-center"
                   onClick={handleGoogleLogin}
+                  disabled={isSubmitting}
                 >
                   <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24">
                     <path 
@@ -299,7 +348,7 @@ export function AuthForms() {
                   </svg>
                   Google
                 </Button>
-                <FranceConnectButton onClick={handleFranceConnectLogin} />
+                <FranceConnectButton onClick={handleFranceConnectLogin} disabled={isSubmitting} />
               </div>
 
               <div className="relative flex items-center justify-center">
@@ -307,111 +356,158 @@ export function AuthForms() {
                 <span className="relative px-2 bg-white text-sm text-gray-500">ou avec email</span>
               </div>
               
-              <motion.form 
-                onSubmit={handleRegisterSubmit} 
-                className="space-y-6"
-              >
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="first-name" className="text-gray-700">Prénom</Label>
-                  <Input 
-                    id="first-name" 
-                    value={registerData.firstName}
-                    onChange={(e) => setRegisterData({...registerData, firstName: e.target.value})}
-                    className="border-blue-100 focus:border-blue-300"
-                    required 
+              <Form {...registerForm}>
+                <form onSubmit={registerForm.handleSubmit(handleRegisterSubmit)} className="space-y-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={registerForm.control}
+                      name="firstName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-gray-700">Prénom</FormLabel>
+                          <FormControl>
+                            <Input 
+                              className="border-blue-100 focus:border-blue-300"
+                              disabled={isSubmitting}
+                              {...field} 
+                            />
+                          </FormControl>
+                          <FormMessage className="text-xs" />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={registerForm.control}
+                      name="lastName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-gray-700">Nom</FormLabel>
+                          <FormControl>
+                            <Input 
+                              className="border-blue-100 focus:border-blue-300"
+                              disabled={isSubmitting}
+                              {...field} 
+                            />
+                          </FormControl>
+                          <FormMessage className="text-xs" />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  
+                  <FormField
+                    control={registerForm.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-gray-700">Adresse email</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="email"
+                            placeholder="votre@email.com"
+                            className="border-blue-100 focus:border-blue-300"
+                            disabled={isSubmitting}
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage className="text-xs" />
+                      </FormItem>
+                    )}
                   />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="last-name" className="text-gray-700">Nom</Label>
-                  <Input 
-                    id="last-name" 
-                    value={registerData.lastName}
-                    onChange={(e) => setRegisterData({...registerData, lastName: e.target.value})}
-                    className="border-blue-100 focus:border-blue-300"
-                    required 
+                  
+                  <FormField
+                    control={registerForm.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-gray-700">Mot de passe</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Input 
+                              type={showPassword ? "text" : "password"}
+                              placeholder="••••••••"
+                              className="border-blue-100 focus:border-blue-300 pr-10"
+                              disabled={isSubmitting}
+                              {...field} 
+                            />
+                            <button 
+                              type="button"
+                              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                              onClick={() => setShowPassword(!showPassword)}
+                              disabled={isSubmitting}
+                            >
+                              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
+                          </div>
+                        </FormControl>
+                        <FormMessage className="text-xs" />
+                      </FormItem>
+                    )}
                   />
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="register-email" className="text-gray-700">Adresse email</Label>
-                <Input 
-                  id="register-email" 
-                  type="email"
-                  value={registerData.email}
-                  onChange={(e) => setRegisterData({...registerData, email: e.target.value})}
-                  className="border-blue-100 focus:border-blue-300"
-                  required 
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="register-password" className="text-gray-700">Mot de passe</Label>
-                <div className="relative">
-                  <Input 
-                    id="register-password" 
-                    type={showPassword ? "text" : "password"}
-                    value={registerData.password}
-                    onChange={(e) => setRegisterData({...registerData, password: e.target.value})}
-                    className="border-blue-100 focus:border-blue-300 pr-10"
-                    required 
+                  
+                  <FormField
+                    control={registerForm.control}
+                    name="confirmPassword"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-gray-700">Confirmer le mot de passe</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Input 
+                              type={showConfirmPassword ? "text" : "password"}
+                              placeholder="••••••••"
+                              className="border-blue-100 focus:border-blue-300 pr-10"
+                              disabled={isSubmitting}
+                              {...field} 
+                            />
+                            <button 
+                              type="button"
+                              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                              disabled={isSubmitting}
+                            >
+                              {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
+                          </div>
+                        </FormControl>
+                        <FormMessage className="text-xs" />
+                      </FormItem>
+                    )}
                   />
-                  <button 
-                    type="button"
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                    onClick={() => setShowPassword(!showPassword)}
+                  
+                  <FormField
+                    control={registerForm.control}
+                    name="acceptTerms"
+                    render={({ field }) => (
+                      <FormItem className="flex items-start space-x-2">
+                        <FormControl>
+                          <Checkbox 
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            className="data-[state=checked]:bg-blue-600 mt-1"
+                            disabled={isSubmitting}
+                          />
+                        </FormControl>
+                        <div>
+                          <FormLabel className="text-sm text-gray-600">
+                            J'accepte les <Link to={"/legal/terms"}  className="text-blue-600 hover:text-blue-800 font-medium">conditions d'utilisation</Link> et la <Link to={"/legal/privacy"} className="text-blue-600 hover:text-blue-800 font-medium">politique de confidentialité</Link>
+                          </FormLabel>
+                          <FormMessage className="text-xs" />
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 transition-all" 
+                    disabled={isSubmitting}
                   >
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="confirm-password" className="text-gray-700">Confirmer le mot de passe</Label>
-                <div className="relative">
-                  <Input 
-                    id="confirm-password" 
-                    type={showConfirmPassword ? "text" : "password"}
-                    value={registerData.confirmPassword}
-                    onChange={(e) => setRegisterData({...registerData, confirmPassword: e.target.value})}
-                    className="border-blue-100 focus:border-blue-300 pr-10"
-                    required 
-                  />
-                  <button 
-                    type="button"
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  >
-                    {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-              </div>
-              
-              <div className="flex items-center space-x-2">
-                <Checkbox 
-                  id="terms" 
-                  checked={registerData.acceptTerms}
-                  onCheckedChange={(checked) => 
-                    setRegisterData({...registerData, acceptTerms: checked as boolean})
-                  }
-                  className="data-[state=checked]:bg-blue-600"
-                  required
-                />
-                <Label htmlFor="terms" className="text-sm text-gray-600">
-                  J'accepte les <a href="#" className="text-blue-600 hover:text-blue-800 font-medium">conditions d'utilisation</a> et la <a href="#" className="text-blue-600 hover:text-blue-800 font-medium">politique de confidentialité</a>
-                </Label>
-              </div>
-              
-              <Button 
-                type="submit" 
-                className="w-full bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 transition-all" 
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? 'Inscription en cours...' : 'Créer un compte'}
-              </Button>
-            </motion.form>
+                    {isSubmitting ? 'Inscription en cours...' : 'Créer un compte'}
+                  </Button>
+                </form>
+              </Form>
             </motion.div>
           </TabsContent>
         </Tabs>
