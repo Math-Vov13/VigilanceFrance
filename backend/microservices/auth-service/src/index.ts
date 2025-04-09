@@ -1,8 +1,10 @@
 import express, { Request, Response } from 'express';
-import { router as AuthRouter } from './endpoints/users';
+import { router as AuthRouter } from './endpoints/auth';
+import { router as UserRouter } from './endpoints/users';
 import morgan from 'morgan';
 import cors from 'cors';
 import os from 'os';
+import cookieParser from "cookie-parser";
 
 // Vars
 const app = express();
@@ -14,9 +16,13 @@ app.use(cors({
     "origin": "*",
     "credentials": true
 }))
+app.use(cookieParser());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Routes
-app.use("/account", AuthRouter);
+app.use("/auth", AuthRouter);
+app.use("/account", UserRouter);
 
 // Endpoint
 app.get('/', (req: Request, res: Response) => {
