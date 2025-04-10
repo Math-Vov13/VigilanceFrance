@@ -22,8 +22,15 @@
     "typescript": "^5.8.3"
   },
   "dependencies": {
+    "@types/cookie-parser": "^1.4.8",
+    "@types/jsonwebtoken": "^9.0.9",
+    "@types/ws": "^8.18.1",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "express": "^5.1.0",
-    "morgan": "^1.10.0"
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0",
+    "socket.io": "^4.8.1",
+    "ws": "^8.18.1"
   }
 }
