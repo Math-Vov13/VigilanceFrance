@@ -107,15 +107,12 @@ export default function Home() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.6, duration: 0.8 }}
             >
-              <div className="relative">
-                <div className="absolute -inset-4 bg-white/10 rounded-3xl blur-lg"></div>
-                <div className="relative bg-blue-800/50 backdrop-blur-sm p-6 rounded-2xl border border-white/20 shadow-2xl">
-                  <img 
-                    src="./src/assets/french-map.png" 
-                    alt="French map" 
-                    className="w-full max-w-md object-contain"
-                  />
-                </div>
+              <div className='opacity-75'>
+              <img
+                src="./src/assets/french-map.png" 
+                alt="French map" 
+                className="w-full max-w-md object-contain"
+              />
               </div>
             </motion.div>
           </div>

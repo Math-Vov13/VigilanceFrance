@@ -6,6 +6,7 @@ type FranceConnectButtonProps = {
   className?: string;
   size?: 'sm' | 'md' | 'lg';
   showText?: boolean;
+  disabled?: boolean;
 };
 
 export const FranceConnectButton: React.FC<FranceConnectButtonProps> = ({
@@ -13,6 +14,7 @@ export const FranceConnectButton: React.FC<FranceConnectButtonProps> = ({
   className,
   size = 'md',
   showText = true,
+  disabled = false,
 }) => {
   // Tailles du bouton en fonction de la propriété size
   const buttonSizes = {
@@ -33,6 +35,8 @@ export const FranceConnectButton: React.FC<FranceConnectButtonProps> = ({
         'border border-[#000091]',
         // Padding et espacement
         'px-4 py-2 gap-2',
+
+        disabled ? 'cursor-not-allowed opacity-50' : '',
         // Taille du bouton
         buttonSizes[size],
         // Classes personnalisées

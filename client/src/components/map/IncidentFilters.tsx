@@ -13,6 +13,7 @@ import {
 type IncidentFiltersProps = {
   selectedType: string;
   onChange: (value: string) => void;
+  counts: { count: number; value: string; label: string; color: string; icon: string; }[]
 };
 
 export function IncidentFilters({ selectedType, onChange }: IncidentFiltersProps) {

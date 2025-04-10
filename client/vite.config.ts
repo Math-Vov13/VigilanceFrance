@@ -11,13 +11,13 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  build: {
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          dsfr: ['@gouvfr/dsfr'],
-        },
+  server: {
+    port: 5173,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
       },
-    }
-  }
+    },
+  },
 })

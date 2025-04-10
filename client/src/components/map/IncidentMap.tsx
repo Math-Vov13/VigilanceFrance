@@ -1,129 +1,201 @@
-import { useState, useCallback, useRef } from 'react';
-import { GoogleMap, useJsApiLoader, MarkerF } from '@react-google-maps/api';
+import { useState, useEffect, useRef } from 'react';
+import { GoogleMap, Marker, InfoWindow, useJsApiLoader } from '@react-google-maps/api';
 import { Incident } from '../../types';
-import { Spinner } from '../ui/spinner';
+import { defaultMapCenter, defaultMapZoom, incidentTypes } from '../../constants/constants';
+import { Button } from '../ui/button';
+import { Loader2, Plus } from 'lucide-react';
+import { IncidentForm } from './IncidentForm';
 
-const mapContainerStyle = {
-  width: '100%',
-  height: '100%'
-};
-
-const center = {
-  lat: 46.603354, // Centre de la France approximatif
-  lng: 1.888334
-};
-
-const options = {
-  disableDefaultUI: true,
-  zoomControl: true,
-  mapTypeControl: true,
-  fullscreenControl: true,
-};
-
-type IncidentMapProps = {
+interface IncidentMapProps {
   incidents: Incident[];
   onMarkerClick: (incident: Incident) => void;
   filteredType: string;
-};
+  onAddIncident?: (incident: Omit<Incident, 'id' | 'comments'>) => void;
+}
 
 export function IncidentMap({ 
   incidents, 
   onMarkerClick, 
-  filteredType 
+  filteredType,
+  onAddIncident 
 }: IncidentMapProps) {
+  const { isLoaded } = useJsApiLoader({
+    id: 'google-map-script',
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
+  });
+
+  const [map, setMap] = useState<google.maps.Map | null>(null);
+  const [selectedMarker, setSelectedMarker] = useState<Incident | null>(null);
+  const [mapCenter, setMapCenter] = useState(defaultMapCenter);
+  const [addingIncident, setAddingIncident] = useState(false);
+  const [newIncidentCoords, setNewIncidentCoords] = useState(defaultMapCenter);
+  
   const mapRef = useRef<google.maps.Map | null>(null);
   
-  const [userLocation, setUserLocation] = useState<google.maps.LatLngLiteral | null>(null);
+  // Filter incidents based on selected type
+  const filteredIncidents = filteredType === 'all' 
+    ? incidents 
+    : incidents.filter(incident => incident.type === filteredType);
   
-  const { isLoaded, loadError } = useJsApiLoader({
-    id: 'google-map-script',
-    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
-  });
+  const handleMapClick = (e: google.maps.MapMouseEvent) => {
+    if (e.latLng) {
+      setNewIncidentCoords({
+        lat: e.latLng.lat(),
+        lng: e.latLng.lng()
+      });
+      setAddingIncident(true);
+    }
+  };
   
-  const onMapLoad = useCallback((map: google.maps.Map) => {
+  const handleMarkerClick = (incident: Incident) => {
+    setSelectedMarker(incident);
+    setTimeout(() => {
+      onMarkerClick(incident);
+      setSelectedMarker(null);
+    }, 200);
+  };
+  
+  const handleAddIncident = (incident: Omit<Incident, 'id' | 'comments'>) => {
+    if (onAddIncident) {
+      onAddIncident(incident);
+    }
+    setAddingIncident(false);
+  };
+  
+  const onMapLoad = (map: google.maps.Map) => {
     mapRef.current = map;
+    setMap(map);
+  };
+  
+  // Get marker icon based on incident type
+  const getMarkerIcon = (type: string) => {
+    const incidentType = incidentTypes.find(t => t.value === type);
+    if (!incidentType) return defaultIcon;
     
-    // Try to get user's location
+    return {
+      url: `/icons/${incidentType.icon}.svg`,
+      scaledSize: new google.maps.Size(30, 30),
+    };
+  };
+  
+  // Update user's location if allowed
+  useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          const location = {
+          setMapCenter({
             lat: position.coords.latitude,
             lng: position.coords.longitude,
-          };
-          setUserLocation(location);
-          map.setCenter(location);
-          map.setZoom(10);
+          });
         },
         () => {
-          // If user denies location, keep default center
-          console.log("Geolocation permission denied");
+          // Use default if geolocation fails
+          console.log('Geolocation permission denied. Using default location.');
         }
       );
     }
   }, []);
   
-  const onMapUnmount = useCallback(() => {
-    mapRef.current = null;
-  }, []);
+  // Reset map when filter changes
+  useEffect(() => {
+    if (map && filteredIncidents.length > 0) {
+      const bounds = new google.maps.LatLngBounds();
+      
+      filteredIncidents.forEach(incident => {
+        bounds.extend(new google.maps.LatLng(
+          incident.coordinates.lat,
+          incident.coordinates.lng
+        ));
+      });
+      
+      // Only adjust bounds if we have multiple points
+      if (filteredIncidents.length > 1) {
+        map.fitBounds(bounds);
+      }
+    }
+  }, [filteredType, map, filteredIncidents]);
   
-  const filteredIncidents = filteredType === 'all' 
-    ? incidents 
-    : incidents.filter(incident => incident.type === filteredType);
-  
-  if (loadError) return <div>Erreur de chargement de la carte</div>;
-  if (!isLoaded) return <div className="h-full flex items-center justify-center"><Spinner /></div>;
+  if (!isLoaded) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        <span className="ml-2">Chargement de la carte...</span>
+      </div>
+    );
+  }
   
   return (
-    <div className="h-full w-full">
+    <div className="relative h-full w-full">
       <GoogleMap
-        mapContainerStyle={mapContainerStyle}
-        center={center}
-        zoom={6}
-        options={options}
+        mapContainerStyle={{ width: '100%', height: '100%' }}
+        center={mapCenter}
+        zoom={defaultMapZoom}
         onLoad={onMapLoad}
-        onUnmount={onMapUnmount}
+        onClick={handleMapClick}
+        options={{
+          streetViewControl: false,
+          mapTypeControl: false,
+          fullscreenControl: true,
+          zoomControl: true,
+          styles: [
+            {
+              featureType: 'poi',
+              elementType: 'labels',
+              stylers: [{ visibility: 'off' }]
+            }
+          ]
+        }}
       >
-        {/* User's location marker */}
-        {userLocation && (
-          <MarkerF
-            position={userLocation}
-            icon={{
-              url: 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png',
-              scaledSize: new google.maps.Size(32, 32),
-            }}
-          />
-        )}
-        
-        {/* Incident markers */}
-        {filteredIncidents.map((incident) => (
-          <MarkerF
+        {filteredIncidents.map(incident => (
+          <Marker
             key={incident.id}
-            position={incident.coordinates}
-            onClick={() => onMarkerClick(incident)}
-            icon={{
-              url: getMarkerIconByType(incident.type, incident.severity),
-              scaledSize: new google.maps.Size(30, 30),
+            position={{ 
+              lat: incident.coordinates.lat, 
+              lng: incident.coordinates.lng 
             }}
+            onClick={() => handleMarkerClick(incident)}
+            icon={getMarkerIcon(incident.type)}
+            animation={google.maps.Animation.DROP}
           />
         ))}
+        
+        {selectedMarker && (
+          <InfoWindow
+            position={{
+              lat: selectedMarker.coordinates.lat,
+              lng: selectedMarker.coordinates.lng
+            }}
+            onCloseClick={() => setSelectedMarker(null)}
+          >
+            <div className="p-2 max-w-xs">
+              <h3 className="font-semibold">{selectedMarker.title}</h3>
+              <p className="text-sm text-gray-600">{selectedMarker.location}</p>
+            </div>
+          </InfoWindow>
+        )}
       </GoogleMap>
+      
+      {/* Add Incident Button */}
+      {onAddIncident && (
+        <Button
+          className="absolute bottom-4 right-4 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700"
+          size="lg"
+          onClick={() => setAddingIncident(true)}
+        >
+          <Plus className="mr-2 h-5 w-5" />
+          Signaler
+        </Button>
+      )}
+      
+      {/* Incident Form Dialog */}
+      {addingIncident && (
+        <IncidentForm
+          open={addingIncident}
+          onClose={() => setAddingIncident(false)}
+          onSubmit={handleAddIncident}
+          initialCoordinates={newIncidentCoords}
+        />
+      )}
     </div>
   );
-}
-
-// Helper function to get marker icon based on incident type and severity
-function getMarkerIconByType(type: string, severity: string): string {
-  const basePath = 'https://maps.google.com/mapfiles/ms/icons/';
-  
-  switch (severity) {
-    case 'majeur':
-      return `${basePath}red-dot.png`;
-    case 'moyen':
-      return `${basePath}orange-dot.png`;
-    case 'mineur':
-      return `${basePath}yellow-dot.png`;
-    default:
-      return `${basePath}red-dot.png`;
-  }
 }
