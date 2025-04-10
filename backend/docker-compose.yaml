@@ -8,8 +8,12 @@ services:
 
     ports:
       - "3000:80"
+
+    networks:
+      - custom-networks
     
     depends_on:
+      - redis-data
       - auth-service
       - maps-service
       - mess-service
@@ -24,6 +28,12 @@ services:
     
     ports:
       - "3001:80"
+    
+    networks:
+      - custom-networks
+    
+    depends_on:
+      - redis-data
   
   maps-service:
     build:
@@ -34,6 +44,12 @@ services:
     
     ports:
       - "3003:80"
+    
+    networks:
+      - custom-networks
+    
+    depends_on:
+      - redis-data
 
   mess-service:
     build:
@@ -44,6 +60,12 @@ services:
     
     ports:
       - "3004:80"
+    
+    networks:
+      - custom-networks
+    
+    depends_on:
+      - redis-data
   
   notifs-service:
     build:
@@ -54,3 +76,32 @@ services:
     
     ports:
       - "3005:80"
+    
+    networks:
+      - custom-networks
+
+    depends_on:
+      - redis-data
+  
+  redis-data:
+    image: redis:6.2.6-alpine
+    restart: always
+    command: redis-server --requirepass mypassword --loglevel warning --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    
+    ports:
+      - "6379:6379"
+    
+    volumes:
+      - redis-data:/data
+
+    networks:
+      - custom-networks
+
+
+networks:
+  custom-networks:
+    driver: bridge
+
+volumes:
+  redis-data:
+    driver: local

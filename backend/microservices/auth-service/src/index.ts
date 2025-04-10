@@ -20,6 +20,9 @@ app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+
+app.set('trust proxy', true);
+
 // Routes
 app.use("/auth", AuthRouter);
 app.use("/account", UserRouter);
