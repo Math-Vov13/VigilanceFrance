@@ -15,6 +15,8 @@
   "packageManager": "pnpm@10.7.0",
   "devDependencies": {
     "@types/cors": "^2.8.17",
+    "@types/cookie-parser": "^1.4.8",
+    "@types/jsonwebtoken": "^9.0.9",
     "@types/express": "^5.0.1",
     "@types/morgan": "^1.9.9",
     "nodemon": "^3.1.9",
@@ -22,15 +24,11 @@
     "typescript": "^5.8.3"
   },
   "dependencies": {
-    "@types/cookie-parser": "^1.4.8",
-    "@types/jsonwebtoken": "^9.0.9",
-    "@types/ws": "^8.18.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
-    "socket.io": "^4.8.1",
-    "ws": "^8.18.1"
+    "socket.io": "^4.8.1"
   }
 }
