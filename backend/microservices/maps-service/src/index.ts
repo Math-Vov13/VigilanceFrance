@@ -2,7 +2,9 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
 import os from 'os';
-import { router } from './endpoints/markers';
+import { router as routerIssues } from './endpoints/markers';
+import { router as routerVotes } from './endpoints/votes';
+import { router as routerSolved } from './endpoints/solved';
 import cookieParser from "cookie-parser";
 
 // Vars
@@ -23,7 +25,9 @@ app.set('trust proxy', true);
 
 
 // Endpoints
-app.use("/markers", router);
+app.use("/interactions/issues", routerIssues);
+app.use("/interactions/votes", routerVotes);
+app.use("/interactions/solved", routerSolved);
 
 
 app.get('/', (req: Request, res: Response) => {
