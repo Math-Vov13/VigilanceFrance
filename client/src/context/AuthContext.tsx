@@ -76,6 +76,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
+        createdAt: user.createdAt,
         profileImage: user.profileImage ?? undefined
       });
       
@@ -113,6 +114,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
+        createdAt: user.createdAt,
         profileImage: user.profileImage ?? undefined
       });
       
@@ -160,6 +162,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
+        createdAt: user.createdAt,
         profileImage: user.profileImage ?? undefined
       });
       
@@ -196,6 +199,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
+        createdAt: user.createdAt,
         profileImage: user.profileImage ?? undefined
       });
       

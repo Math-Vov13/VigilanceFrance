@@ -1,14 +1,34 @@
 import { ApiResponse } from "../services/api";
 
-// User-related types
 export interface User {
   id: string;
   firstName: string;
   lastName: string;
   email: string;
   profileImage?: string;
+  createdAt: string;
 }
 
+export interface AdminUser extends User {
+  role: 'user' | 'moderator' | 'admin';
+  createdAt: string;
+  lastLogin?: string;
+  status?: {
+    active: boolean;
+    suspended: boolean;
+    banned: boolean;
+  };
+  reportedIncidents?: number[];
+  savedIncidents?: number[];
+}
+
+export interface AdminAuthContextType {
+  admin: AdminUser | null;
+  isAuthenticated: boolean;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => void;
+}
 export interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<ApiResponse<User>>;
@@ -22,35 +42,42 @@ export interface AuthContextType {
   error: string | null;
 }
 
-// Incident-related types
 export interface Comment {
   id: number;
   user: string;
   text: string;
   date: string;
+  likes?: number;
+  reported?: boolean;
 }
 
 export type IncidentSeverity = 'mineur' | 'moyen' | 'majeur';
 
 export type IncidentType = 'accident' | 'inondation' | 'vol' | 'agression' | 'incendie' | 'autre';
 
+
+export interface Coordinates {
+  lat: number;
+  lng: number;
+}
 export interface Incident {
   id: number;
-  type: IncidentType;
+  type: string;
   title: string;
   description: string;
   location: string;
-  coordinates: {
-    lat: number;
-    lng: number;
-  };
+  coordinates: Coordinates;
   date: string;
   severity: IncidentSeverity;
   reportedBy: string;
   comments: Comment[];
-  images?: string[];
+  status?: 'active' | 'verified' | 'resolved' | 'unverified';
+  imageUrls?: string[];
+  verifiedBy?: string;
+  verifiedDate?: string;
+  upvotes?: number;
+  downvotes?: number;
 }
-
 // Map component props
 export interface IncidentMapProps {
   incidents: Incident[];
