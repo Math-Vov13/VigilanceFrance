@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { verifyToken } from '../security/jwt';
-import { getAllMessages, getMessagesByCoordinates, addMessage } from '../model/db_messages';
+import { getAllMessages, addMessage, getMessagesByMarkID } from '../model/db_messages';
 
 const router = Router();
 
@@ -10,26 +10,21 @@ const router = Router();
  */
 router.get('/', verifyToken, (req: Request, res: Response) => {
   try {
-    const { lat, lng, radius } = req.query;
+    const { markerID } = req.query;
 
-    if (lat && lng) {
-      const latitude = parseFloat(lat as string);
-      const longitude = parseFloat(lng as string);
-      const radiusValue = radius ? parseFloat(radius as string) : 10;
-
-      if (isNaN(latitude) || isNaN(longitude) || isNaN(radiusValue)) {
-        res.status(400).json({ message: 'Coordonnées invalides' });
+    if (markerID) {
+      
+        const messages = getAllMessages();
+    
+        res.status(200).json(messages);
         return;
-      }
-
-      const messages = getMessagesByCoordinates(latitude, longitude, radiusValue);
-      res.status(200).json(messages);
-      return;
     }
 
-    const messages = getAllMessages();
+    const messages = getMessagesByMarkID(markerID as string);
     res.status(200).json(messages);
-    return
+    return;
+
+
   } catch (error) {
     console.error('Erreur lors de la récupération des messages:', error);
     res.status(500).json({ message: 'Erreur serveur' });
@@ -39,18 +34,18 @@ router.get('/', verifyToken, (req: Request, res: Response) => {
 
 /**
  * POST /messages
- * Ajoute un nouveau message
+ * Ajoute un nouveau message (TEST ONLY)
  */
 router.post('/', verifyToken, (req: Request, res: Response) => {
   try {
-    const { text, coordinates } = req.body;
+    const { text, markerID } = req.body;
 
     if (!text) {
       res.status(400).json({ message: 'Le contenu du message est requis' });
       return;
     }
 
-    const user = req.user?.username;
+    const user = req.user?.username; // user ou username ça dépend de la forme de la requête
 
     if (!user) {
       res.status(401).json({ message: 'Utilisateur non authentifié' });
@@ -61,7 +56,7 @@ router.post('/', verifyToken, (req: Request, res: Response) => {
       user,
       text,
       date: new Date().toISOString(),
-      coordinates,
+      markerID: markerID
     });
 
     res.status(201).json(newMessage);

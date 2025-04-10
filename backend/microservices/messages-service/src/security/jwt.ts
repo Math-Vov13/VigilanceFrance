@@ -22,6 +22,7 @@ declare global {
 /**
  * Middleware pour vérifier le token JWT
  */
+
 export const verifyToken: RequestHandler = (req, res, next) => {
   const token = req.cookies?.AuthToken;
 

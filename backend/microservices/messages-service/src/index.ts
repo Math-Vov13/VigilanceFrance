@@ -1,13 +1,18 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
+import http from 'http';
 import os from 'os';
 import cookieParser from 'cookie-parser';
 import messagesRouter from './endpoint/messages';
-import { setupWebSocket } from './ws';
+// import { setupWebSocket } from './ws';
+// import { setupSocket } from './socket';
+
 
 const app = express();
 const PORT = process.env["PORT"] || 3004;
+
+
 
 app.use(cors({
     "origin": "*",
@@ -51,7 +56,8 @@ const server = app.listen(PORT, () => {
     console.log(`[server]: Running Server on http://localhost:${PORT}`);
 });
 
-setupWebSocket(server);
+// setupWebSocket(server);
+// setupSocket(server);
 
 process.on("SIGTERM", () => {
     console.debug('SIGTERM signal received: closing HTTP server');
