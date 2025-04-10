@@ -13,17 +13,14 @@ router.get('/', verifyToken, (req: Request, res: Response) => {
     const { markerID } = req.query;
 
     if (markerID) {
-      
-        const messages = getAllMessages();
-    
-        res.status(200).json(messages);
-        return;
+      const messages = getMessagesByMarkID(markerID as string);
+      res.status(200).json(messages);
+      return;
     }
 
-    const messages = getMessagesByMarkID(markerID as string);
+    const messages = getAllMessages();
     res.status(200).json(messages);
     return;
-
 
   } catch (error) {
     console.error('Erreur lors de la récupération des messages:', error);

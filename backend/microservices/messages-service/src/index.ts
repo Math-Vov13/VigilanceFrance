@@ -6,17 +6,16 @@ import os from 'os';
 import cookieParser from 'cookie-parser';
 import messagesRouter from './endpoint/messages';
 // import { setupWebSocket } from './ws';
-// import { setupSocket } from './socket';
-
+import { setupSocket } from './socket';
 
 const app = express();
 const PORT = process.env["PORT"] || 3004;
 
-
-
+// Configuration CORS - spécifiez une origine précise ou ajustez le client pour ne pas utiliser withCredentials
 app.use(cors({
-    "origin": "*",
-    "credentials": true
+    // origin: "*", // Ne fonctionne pas avec credentials: true
+    origin: true, // Réfléchit l'origine de la requête
+    credentials: true
 }));
 app.use(morgan("dev"));
 app.use(express.json());
@@ -56,8 +55,8 @@ const server = app.listen(PORT, () => {
     console.log(`[server]: Running Server on http://localhost:${PORT}`);
 });
 
+setupSocket(server);
 // setupWebSocket(server);
-// setupSocket(server);
 
 process.on("SIGTERM", () => {
     console.debug('SIGTERM signal received: closing HTTP server');

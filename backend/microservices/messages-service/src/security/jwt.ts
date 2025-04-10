@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction, RequestHandler } from 'express';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const JWT_SECRET = process.env.JWT_SECRET || 'scecretcte_ckeyekeykeykey';
 
 export interface TokenPayload {
   userId: string;
@@ -22,9 +22,15 @@ declare global {
 /**
  * Middleware pour vérifier le token JWT
  */
-
 export const verifyToken: RequestHandler = (req, res, next) => {
-  const token = req.cookies?.AuthToken;
+  let token = req.cookies?.AuthToken;
+  
+  if (!token) {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7);
+    }
+  }
 
   if (!token) {
     res.status(401).json({ message: 'Authentification requise' });
