@@ -27,7 +27,18 @@ export async function getUser(email: z.infer<typeof UserRegister>["email"], pass
     return null;
 }
 
+export async function getUser_byemail(email: string): Promise<z.infer<typeof UserDB> | null> {
+    const user = fake_db.find((user) => user.email === email);
+    return user || null;
+}
+
 export async function createUser(user: z.infer<typeof UserRegister>): Promise<z.infer<typeof UserDB> | null> {
+    // Check if user already exists
+    const existingUser = await getUser_byemail(user.email);
+    if (existingUser) {
+        return null;
+    }
+
     const data = {
         "id": crypto.randomUUID(),
         "username": user.firstName + user.lastName,
