@@ -28,7 +28,7 @@ app.get('/', (req: Request, res: Response) => {
     return;
 });
 
-// Endpoint de health check
+    // health check
 app.get("/health", (req: Request, res: Response) => {
     res.setHeader("Cache-Control", "no-cache");
     // Understanding Health Check inside MicroServices (https://testfully.io/blog/api-health-check-monitoring/)
