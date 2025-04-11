@@ -1,15 +1,30 @@
 import { User } from '@/types';
 import axios, { AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
 
-
 const API_GATEWAY_URL = import.meta.env.VITE_API_GATEWAY_URL ?? 'http://localhost:3000/';
 const API_TIMEOUT = 15000;
-
 
 export interface ApiResponse<T = unknown> {
   success: boolean;
   message?: string;
   data: T;
+}
+
+// Types pour les réponses d'authentification
+export interface AuthTokenResponse {
+  connected: boolean;
+  user?: string;
+  _rft: string;
+}
+
+export interface RefreshTokenResponse {
+  connected: boolean;
+  _rft: string;
+}
+
+export interface SocialAuthResponse {
+  user: User;
+  refreshToken: string;
 }
 
 // Créer une instance avec Axios
@@ -18,12 +33,12 @@ const apiClient = axios.create({
   timeout: API_TIMEOUT,
   headers: {
     'Content-Type': 'application/json'
-  }
+  },
+  withCredentials: true
 });
 
 apiClient.interceptors.request.use(
   (config) => {
-    // Check if this is a refresh token request
     if (config.url?.includes('/auth/auth/refresh')) {
       const refreshToken = localStorage.getItem('refresh_token');
       if (refreshToken) {
@@ -35,29 +50,41 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-
 apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    if (error.response?.status === 401) {
-      const refreshToken = localStorage.getItem('refresh_token');
-      const originalRequest = error.config as AxiosRequestConfig;
+    const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
+  
+    if (error.response?.status === 401 && !originalRequest._retry && 
+        !originalRequest.url?.includes('/auth/auth/refresh')) {
       
-      if (refreshToken && !originalRequest.url?.includes('/auth/auth/refresh')) {
+      const refreshToken = localStorage.getItem('refresh_token');
+      
+      if (refreshToken) {
         try {
-          await apiClient.post('/auth/auth/refresh');
+          originalRequest._retry = true;
           
-          // Original request should now work with the new auth cookie
+        
+          const response = await apiClient.post('/auth/auth/refresh');
+          
+         
+          if (response.data && response.data._rft) {
+            localStorage.setItem('refresh_token', response.data._rft);
+          }
+          
+          
           return apiClient(originalRequest);
         } catch (refreshError) {
-          // If refresh fails, clear tokens and redirect to login
+        
           localStorage.removeItem('refresh_token');
-          window.location.href = '/auth';
+          
+         
+          window.dispatchEvent(new CustomEvent('auth:session-expired'));
+          
           return Promise.reject(refreshError);
         }
       } else {
-        // No refresh token or refresh failed
-        localStorage.removeItem('refresh_token');
+        window.dispatchEvent(new CustomEvent('auth:session-expired'));
       }
     }
     const errorMessage = (error.response?.data as ApiResponse)?.message || 'Une erreur est survenue';
@@ -67,7 +94,7 @@ apiClient.interceptors.response.use(
 );
 
 export const authApi = {
-  login: (email: string, password: string): Promise<AxiosResponse<{ connected: boolean; user: string; _rft: string }>> => {
+  login: (email: string, password: string): Promise<AxiosResponse<AuthTokenResponse>> => {
     return apiClient.post('/auth/auth/login', { email, password });
   },
   register: (userData: {
@@ -75,7 +102,7 @@ export const authApi = {
     lastName: string;
     email: string;
     password: string;
-  }): Promise<AxiosResponse<{ connected: boolean; user: string; _rft: string }>> => {
+  }): Promise<AxiosResponse<AuthTokenResponse>> => {
     return apiClient.post('/auth/auth/register', userData);
   },
   
@@ -87,15 +114,15 @@ export const authApi = {
     return apiClient.get('/auth/account/profile');
   },
   
-  refreshToken: (): Promise<AxiosResponse<{ connected: boolean; _rft: string }>> => {
+  refreshToken: (): Promise<AxiosResponse<RefreshTokenResponse>> => {
     return apiClient.post('/auth/auth/refresh');
   },
   
-  googleAuth: (token: string): Promise<AxiosResponse<ApiResponse<{ user: User; refreshToken: string }>>> => {
+  googleAuth: (token: string): Promise<AxiosResponse<ApiResponse<SocialAuthResponse>>> => {
     return apiClient.post('/auth/auth/google', { token });
   },
   
-  franceConnectAuth: (code: string): Promise<AxiosResponse<ApiResponse<{ user: User; refreshToken: string }>>> => {
+  franceConnectAuth: (code: string): Promise<AxiosResponse<ApiResponse<SocialAuthResponse>>> => {
     return apiClient.post('/auth/auth/france-connect', { code });
   }
 };

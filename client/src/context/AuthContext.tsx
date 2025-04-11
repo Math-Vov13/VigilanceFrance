@@ -9,67 +9,107 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  useEffect(() => {
-    const checkAuthStatus = async () => {
-      const refreshToken = localStorage.getItem('refresh_token');
-      if (!refreshToken) {
-        setLoading(false);
-        return;
-      }
-
-      let attempts = 0;
-      const maxAttempts = 3;
-    
-      try {
-        if (attempts >= maxAttempts) {
-          localStorage.removeItem('refresh_token');
-          setLoading(false);
-          return;
-        }
-        attempts++;
-        
-        const response = await authApi.verifyToken();
-        const userData = response.data.data;
-        
-        if (userData && userData.id) {
-          setUser({
-            id: userData.id,
-            firstName: userData.firstName || "",
-            lastName: userData.lastName || "",
-            email: userData.email || "",
-            profileImage: userData.profileImage || undefined
-          });
-        }
-      } catch (err) {
-        localStorage.removeItem('refresh_token');
-        console.error('Auth token verification failed:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkAuthStatus();
-  }, []);
-
   const refreshAuthToken = useCallback(async (): Promise<boolean> => {
+    const refreshToken = localStorage.getItem('refresh_token');
+    
+    if (!refreshToken) {
+      return false;
+    }
+    
     try {
-      await new Promise(resolve => setTimeout(resolve, 500));
       const response = await authApi.refreshToken();
-      const { connected, _rft } = response.data;
       
-      if (connected && _rft) {
-        localStorage.setItem('refresh_token', _rft);
+      if (response.data && response.data._rft) {
+        localStorage.setItem('refresh_token', response.data._rft);
         return true;
       }
       
       return false;
     } catch (err) {
-      console.error('Failed to refresh auth token:', err);
+      console.error('Échec du rafraîchissement du token:', err);
       localStorage.removeItem('refresh_token');
       setUser(null);
       return false;
     }
   }, []);
+  
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      setLoading(true);
+      const refreshToken = localStorage.getItem('refresh_token');
+      
+      if (!refreshToken) {
+        setLoading(false);
+        return;
+      }
+  
+      try {
+        // Récupérer le profil de l'utilisateur
+        const response = await authApi.verifyToken();
+        
+        if (response.data && response.data.data) {
+          const userData = response.data.data;
+          
+          if (userData && userData.id) {
+            setUser({
+              id: userData.id,
+              firstName: userData.firstName || "",
+              lastName: userData.lastName || "",
+              email: userData.email || "",
+              profileImage: userData.profileImage || undefined
+            });
+          }
+        }
+      } catch (err) {
+        console.error('Vérification du token échouée:', err);
+        
+        // Essayer de rafraîchir le token
+        try {
+          const refreshSuccess = await refreshAuthToken();
+          
+          if (refreshSuccess) {
+            // Si le refresh a réussi, essayer à nouveau de vérifier le token
+            const retryResponse = await authApi.verifyToken();
+            const userData = retryResponse.data.data;
+            
+            if (userData && userData.id) {
+              setUser({
+                id: userData.id,
+                firstName: userData.firstName || "",
+                lastName: userData.lastName || "",
+                email: userData.email || "",
+                profileImage: userData.profileImage || undefined
+              });
+            }
+          } else {
+            // Si le refresh échoue, effacer les données d'authentification
+            localStorage.removeItem('refresh_token');
+            setUser(null);
+          }
+        } catch (refreshErr) {
+          console.error('Refresh de token échoué:', refreshErr);
+          localStorage.removeItem('refresh_token');
+          setUser(null);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+  
+    checkAuthStatus();
+    
+    // Écouteur pour l'événement de session expirée
+    const handleSessionExpired = () => {
+      setUser(null);
+      localStorage.removeItem('refresh_token');
+    };
+    
+    window.addEventListener('auth:session-expired', handleSessionExpired);
+    
+    return () => {
+      window.removeEventListener('auth:session-expired', handleSessionExpired);
+    };
+  }, [refreshAuthToken]);
 
   const login = useCallback(async (email: string, password: string): Promise<ApiResponse<User>> => {
     setLoading(true);
@@ -87,8 +127,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       const userObject = {
         id: "temp-id",
-        firstName: username.split(/(?=[A-Z])/)[0] || "",
-        lastName: username.split(/(?=[A-Z])/).slice(1).join("") || "",
+        firstName: username ? username.split(/(?=[A-Z])/)[0] || "" : "",
+        lastName: username ? username.split(/(?=[A-Z])/).slice(1).join("") || "" : "",
         email: email,
         profileImage: undefined
       };
