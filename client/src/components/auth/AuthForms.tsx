@@ -24,7 +24,6 @@ export function AuthForms() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Login form with react-hook-form and zod
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -33,8 +32,6 @@ export function AuthForms() {
       rememberMe: false
     }
   });
-  
-  // Register form with react-hook-form and zod
   const registerForm = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
@@ -125,8 +122,7 @@ export function AuthForms() {
   // Fonction pour gérer la connexion avec FranceConnect
   const handleFranceConnectLogin = async () => {
     try {
-      // This would be replaced with actual FranceConnect OAuth flow
-      const franceConnectCode = "mock_fc_code"; // would come from FranceConnect redirect
+      const franceConnectCode = "mock_fc_code"; 
       
       await franceConnectAuth(franceConnectCode);
       toast({

@@ -2,7 +2,7 @@ import { User } from '@/types';
 import axios, { AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
 
 
-const API_GATEWAY_URL = import.meta.env.VITE_API_GATEWAY_URL ?? 'http://localhost:3000';
+const API_GATEWAY_URL = import.meta.env.VITE_API_GATEWAY_URL ?? 'http://localhost:3000/';
 const API_TIMEOUT = 15000;
 
 
@@ -23,32 +23,29 @@ const apiClient = axios.create({
 
 apiClient.interceptors.request.use(
   (config) => {
-    // Le token d'authentification sera stocké dans les cookies côté gateway
-    const refreshToken = localStorage.getItem('refresh_token');
-    if (refreshToken && config.url?.includes('/auth/refresh')) {
-      config.headers['X-Refresh-Token'] = refreshToken;
+    // Check if this is a refresh token request
+    if (config.url?.includes('/auth/auth/refresh')) {
+      const refreshToken = localStorage.getItem('refresh_token');
+      if (refreshToken) {
+        config.headers['Authorization'] = `Bearer ${refreshToken}`;
+      }
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
 
 apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    // Handle token expiration (401 Unauthorized)
     if (error.response?.status === 401) {
-      // Try to refresh the token
       const refreshToken = localStorage.getItem('refresh_token');
       const originalRequest = error.config as AxiosRequestConfig;
       
-      if (refreshToken && !originalRequest.url?.includes('/auth/refresh')) {
+      if (refreshToken && !originalRequest.url?.includes('/auth/auth/refresh')) {
         try {
-          // Call token refresh endpoint
-          await apiClient.post('/auth/refresh');
+          await apiClient.post('/auth/auth/refresh');
           
           // Original request should now work with the new auth cookie
           return apiClient(originalRequest);
@@ -70,37 +67,36 @@ apiClient.interceptors.response.use(
 );
 
 export const authApi = {
-  login: (email: string, password: string): Promise<AxiosResponse<ApiResponse<{ user: User; refreshToken: string }>>> => {
-    return apiClient.post('/auth/login', { email, password });
+  login: (email: string, password: string): Promise<AxiosResponse<{ connected: boolean; user: string; _rft: string }>> => {
+    return apiClient.post('/auth/auth/login', { email, password });
   },
   register: (userData: {
     firstName: string;
     lastName: string;
     email: string;
     password: string;
-  }): Promise<AxiosResponse<ApiResponse<{ user: User; refreshToken: string }>>> => {
-    return apiClient.post('/auth/register', userData);
+  }): Promise<AxiosResponse<{ connected: boolean; user: string; _rft: string }>> => {
+    return apiClient.post('/auth/auth/register', userData);
   },
   
   logout: (): Promise<AxiosResponse<ApiResponse<null>>> => {
-    return apiClient.post('/auth/logout');
+    return apiClient.post('/auth/auth/logout');
+  },
+
+  verifyToken: (): Promise<AxiosResponse<ApiResponse<User>>> => {
+    return apiClient.get('/auth/account/profile');
   },
   
-  refreshToken: (): Promise<AxiosResponse<ApiResponse<{ refreshToken: string }>>> => {
-    return apiClient.post('/auth/refresh');
+  refreshToken: (): Promise<AxiosResponse<{ connected: boolean; _rft: string }>> => {
+    return apiClient.post('/auth/auth/refresh');
   },
-  
-  verifyToken: (): Promise<AxiosResponse<ApiResponse<{ user: User }>>> => {
-    return apiClient.get('/auth/verify');
-  },
-  
   
   googleAuth: (token: string): Promise<AxiosResponse<ApiResponse<{ user: User; refreshToken: string }>>> => {
-    return apiClient.post('/auth/google', { token });
+    return apiClient.post('/auth/auth/google', { token });
   },
   
   franceConnectAuth: (code: string): Promise<AxiosResponse<ApiResponse<{ user: User; refreshToken: string }>>> => {
-    return apiClient.post('/auth/france-connect', { code });
+    return apiClient.post('/auth/auth/france-connect', { code });
   }
 };
 

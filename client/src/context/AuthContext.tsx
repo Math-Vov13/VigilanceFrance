@@ -9,25 +9,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-
-  // Check if user is already logged in on app initialization
   useEffect(() => {
     const checkAuthStatus = async () => {
-      // Check if we have a refresh token
       const refreshToken = localStorage.getItem('refresh_token');
       if (!refreshToken) {
         setLoading(false);
         return;
       }
 
+      let attempts = 0;
+      const maxAttempts = 3;
+    
       try {
-        // No need to send the auth token - it's in the HTTP-only cookie
+        if (attempts >= maxAttempts) {
+          localStorage.removeItem('refresh_token');
+          setLoading(false);
+          return;
+        }
+        attempts++;
+        
         const response = await authApi.verifyToken();
-        if (response.data.data.user) {
-          setUser(response.data.data.user);
+        const userData = response.data.data;
+        
+        if (userData && userData.id) {
+          setUser({
+            id: userData.id,
+            firstName: userData.firstName || "",
+            lastName: userData.lastName || "",
+            email: userData.email || "",
+            profileImage: userData.profileImage || undefined
+          });
         }
       } catch (err) {
-        // Token invalid or expired, clear it
         localStorage.removeItem('refresh_token');
         console.error('Auth token verification failed:', err);
       } finally {
@@ -38,19 +51,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     checkAuthStatus();
   }, []);
 
-  // Refresh token function
   const refreshAuthToken = useCallback(async (): Promise<boolean> => {
     try {
+      await new Promise(resolve => setTimeout(resolve, 500));
       const response = await authApi.refreshToken();
-      const { refreshToken } = response.data.data;
+      const { connected, _rft } = response.data;
       
-      // Update refresh token in localStorage
-      // (Auth token is updated in HTTP-only cookie by the server)
-      if (refreshToken) {
-        localStorage.setItem('refresh_token', refreshToken);
+      if (connected && _rft) {
+        localStorage.setItem('refresh_token', _rft);
+        return true;
       }
       
-      return true;
+      return false;
     } catch (err) {
       console.error('Failed to refresh auth token:', err);
       localStorage.removeItem('refresh_token');
@@ -62,66 +74,70 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = useCallback(async (email: string, password: string): Promise<ApiResponse<User>> => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const response = await authApi.login(email, password);
-      const { user, refreshToken } = response.data.data;
-      
-      // Save refresh token in localStorage
-      // (Auth token is set as HTTP-only cookie by the server)
-      localStorage.setItem('refresh_token', refreshToken);
-      
-      setUser({
-        id: user.id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        createdAt: user.createdAt,
-        profileImage: user.profileImage ?? undefined
-      });
-      
-      // Return only the user part in the API response to match the expected type
+      const { connected, user: username, _rft } = response.data;
+
+      if (!connected || !_rft) {
+        throw new Error('Connexion échouée - Données invalides reçues du serveur');
+      }
+
+      localStorage.setItem('refresh_token', _rft);
+
+      const userObject = {
+        id: "temp-id",
+        firstName: username.split(/(?=[A-Z])/)[0] || "",
+        lastName: username.split(/(?=[A-Z])/).slice(1).join("") || "",
+        email: email,
+        profileImage: undefined
+      };
+
+      setUser(userObject);
+
       return {
-        success: response.data.success,
-        message: response.data.message,
-        data: user
+        success: true,
+        message: "Connexion réussie",
+        data: userObject
       };
     } catch (err) {
-      const error = err as AxiosError<ApiResponse<null>>;
-      const errorMessage = error.response?.data?.message ?? 'Une erreur est survenue lors de la connexion';
+      console.error("Login error:", err);
+      const errorMessage = err instanceof Error ? err.message : "Une erreur est survenue lors de la connexion";
       setError(errorMessage);
       throw new Error(errorMessage);
     } finally {
       setLoading(false);
     }
   }, [setLoading, setError, setUser]);
-
   const register = useCallback(async (userData: Omit<User, 'id'> & { password: string }): Promise<void> => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const response = await authApi.register(userData);
-      const { user, refreshToken } = response.data.data;
-      
-      // Save refresh token in localStorage
-      // (Auth token is set as HTTP-only cookie by the server)
-      localStorage.setItem('refresh_token', refreshToken);
-      
-      // Update state with user data
+
+      if (!response || !response.data) {
+        throw new Error('Response invalid from server');
+      }
+
+      const { connected, _rft } = response.data;
+
+      if (!connected || !_rft) {
+        throw new Error('Inscription échouée - Données invalides reçues du serveur');
+      }
+
+      localStorage.setItem('refresh_token', _rft);
       setUser({
-        id: user.id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        createdAt: user.createdAt,
-        profileImage: user.profileImage ?? undefined
+        id: "temp-id",
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        email: userData.email,
+        profileImage: userData.profileImage
       });
-      
-      // No return value
+
     } catch (err) {
-      const error = err as AxiosError<ApiResponse<null>>;
-      const errorMessage = error.response?.data?.message ?? 'Une erreur est survenue lors de l\'inscription';
+      console.error("Registration error:", err);
+      const errorMessage = err instanceof Error ? err.message : "Une erreur est survenue lors de l'inscription";
       setError(errorMessage);
       throw new Error(errorMessage);
     } finally {
@@ -131,14 +147,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = useCallback(async (): Promise<void> => {
     setLoading(true);
-    
+
     try {
-      // Call logout API to invalidate tokens on server and clear the HTTP-only cookie
       await authApi.logout();
     } catch (err) {
       console.error('Logout error:', err);
     } finally {
-      // Clear refresh token and user data regardless of API success
       localStorage.removeItem('refresh_token');
       setUser(null);
       setLoading(false);
@@ -148,25 +162,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const googleAuth = useCallback(async (token: string): Promise<ApiResponse<User>> => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const response = await authApi.googleAuth(token);
       const { user, refreshToken } = response.data.data;
-      
-      // Save refresh token in localStorage
-      // (Auth token is set as HTTP-only cookie by the server)
+
       localStorage.setItem('refresh_token', refreshToken);
-      
+
       setUser({
         id: user.id,
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
-        createdAt: user.createdAt,
         profileImage: user.profileImage ?? undefined
       });
-      
-      // Return only the user part in the API response to match the expected type
+
       return {
         success: response.data.success,
         message: response.data.message,
@@ -181,29 +191,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(false);
     }
   }, [setLoading, setError, setUser]);
-  
+
   const franceConnectAuth = useCallback(async (code: string): Promise<ApiResponse<User>> => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const response = await authApi.franceConnectAuth(code);
       const { user, refreshToken } = response.data.data;
-      
-      // Save refresh token in localStorage
-      // (Auth token is set as HTTP-only cookie by the server)
+
       localStorage.setItem('refresh_token', refreshToken);
-      
+
       setUser({
         id: user.id,
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
-        createdAt: user.createdAt,
         profileImage: user.profileImage ?? undefined
       });
-      
-      // Return only the user part in the API response to match the expected type
+
       return {
         success: response.data.success,
         message: response.data.message,

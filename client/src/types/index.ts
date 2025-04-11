@@ -6,28 +6,6 @@ export interface User {
   lastName: string;
   email: string;
   profileImage?: string;
-  createdAt: string;
-}
-
-export interface AdminUser extends User {
-  role: 'user' | 'moderator' | 'admin';
-  createdAt: string;
-  lastLogin?: string;
-  status?: {
-    active: boolean;
-    suspended: boolean;
-    banned: boolean;
-  };
-  reportedIncidents?: number[];
-  savedIncidents?: number[];
-}
-
-export interface AdminAuthContextType {
-  admin: AdminUser | null;
-  isAuthenticated: boolean;
-  loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
 }
 export interface AuthContextType {
   user: User | null;
@@ -97,38 +75,6 @@ export interface IncidentFiltersProps {
   onChange: (value: string) => void;
 }
 
-// Form types for validation
-export interface LoginFormData {
-  email: string;
-  password: string;
-  rememberMe: boolean;
-}
-
-export interface RegisterFormData {
-  firstName: string;
-  lastName: string;
-  email: string;
-  password: string;
-  confirmPassword: string;
-  acceptTerms: boolean;
-}
-
-export interface FormErrors {
-  login: {
-    email: string;
-    password: string;
-  };
-  register: {
-    firstName: string;
-    lastName: string;
-    email: string;
-    password: string;
-    confirmPassword: string;
-    terms: string;
-  };
-}
-
-// Notification types
 export interface Notification {
   id: number;
   type: 'incident_near' | 'comment_added' | 'incident_update' | 'system';
@@ -136,5 +82,5 @@ export interface Notification {
   message: string;
   date: string;
   read: boolean;
-  relatedId?: number; // ID of the related incident or comment
+  relatedId?: number;
 }
