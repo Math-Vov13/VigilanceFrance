@@ -48,37 +48,108 @@
             padding: 10px;
             border: 1px solid #ccc;
         }
+        .auth-section {
+            background-color: #f9f9f9;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        .message-form {
+            padding: 15px;
+            background-color: #f0f8ff;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        .disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
     <h1>Test Client pour l'API Messages</h1>
 
-    <div class="form-group">
-        <label for="token">Token JWT:</label>
-        <input type="text" id="token" placeholder="Coller votre token JWT ici">
-        <button id="connectBtn">Se connecter</button>
+    <div class="auth-section" id="authSection">
+        <h2>Authentification (Optionnelle)</h2>
+        <p>Pour créer des messages, vous devez être connecté.</p>
+
+        <div class="form-group">
+            <label for="token">Token JWT:</label>
+            <input type="text" id="token" placeholder="Coller votre token JWT ici">
+            <button id="connectBtn">Se connecter</button>
+        </div>
     </div>
 
     <h2>Messages</h2>
     <div class="messages" id="messages"></div>
 
-    <div class="form-group">
-        <label for="messageText">Nouveau message:</label>
-        <textarea id="messageText" rows="3"></textarea>
+    <div class="message-form" id="messageForm">
+        <h2>Créer un message</h2>
+        <p id="authMessage">Vous devez être connecté pour créer un message.</p>
+
+        <div class="form-group">
+            <label for="messageText">Nouveau message:</label>
+            <textarea id="messageText" rows="3"></textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="markerID">Marker ID:</label>
+            <input type="text" id="markerID" placeholder="ID du marqueur">
+        </div>
+
+        <button id="sendBtn" disabled>Envoyer le message</button>
     </div>
 
-    <div class="form-group">
-        <label for="markerID">Marker ID:</label>
-        <input type="text" id="markerID" placeholder="ID du marqueur">
-    </div>
-
-    <button id="sendBtn">Envoyer le message</button>
-
-    <div class="status" id="status">Statut: Non connecté</div>
+    <div class="status" id="status">Statut: Chargement des messages...</div>
 
     <script>
         let socket;
         let jwt;
+        let isAuthenticated = false;
+        
+        function connectSocket() {
+            socket = io('http://localhost:3004');
+            
+            socket.on('connect', function() {
+                document.getElementById('status').textContent = 'Statut: Connecté au WebSocket';
+            });
+
+            socket.on('all_messages', function(data) {
+                document.getElementById('status').textContent = 'Statut: Messages reçus';
+                displayMessages(data.messages);
+            });
+
+            socket.on('authentication_successful', function(data) {
+                isAuthenticated = true;
+                document.getElementById('status').textContent = `Statut: Authentifié en tant que ${data.username}`;
+                document.getElementById('authMessage').textContent = 'Vous êtes connecté. Vous pouvez créer des messages.';
+                document.getElementById('sendBtn').disabled = false;
+                document.getElementById('authSection').innerHTML = `<h2>Authentifié</h2><p>Connecté en tant que ${data.username}</p><button id="logoutBtn">Se déconnecter</button>`;
+                document.getElementById('logoutBtn').addEventListener('click', logout);
+            });
+
+            socket.on('unauthorized', function() {
+                document.getElementById('status').textContent = 'Statut: Échec de l\'authentification - Token invalide';
+                isAuthenticated = false;
+            });
+
+            socket.on('duplicate_session', function() {
+                document.getElementById('status').textContent = 'Statut: Session dupliquée - Déconnecté';
+                logout();
+            });
+
+            socket.on('error_fetching_messages', function() {
+                document.getElementById('status').textContent = 'Statut: Erreur lors de la récupération des messages';
+            });
+
+            socket.on('disconnect', function() {
+                document.getElementById('status').textContent = 'Statut: Déconnecté du WebSocket';
+            });
+        }
+
+        window.addEventListener('load', function() {
+            connectSocket();
+        });
 
         document.getElementById('connectBtn').addEventListener('click', function() {
             jwt = document.getElementById('token').value;
@@ -87,33 +158,11 @@
                 return;
             }
 
-            socket = io('http://localhost:3004');
+            if (!socket || !socket.connected) {
+                connectSocket();
+            }
             
-            socket.on('connect', function() {
-                document.getElementById('status').textContent = 'Statut: Connecté au WebSocket, authentification...';
-                socket.emit('authenticate', jwt);
-            });
-
-            socket.on('all_messages', function(data) {
-                document.getElementById('status').textContent = 'Statut: Authentifié et connecté';
-                displayMessages(data.messages);
-            });
-
-            socket.on('unauthorized', function() {
-                document.getElementById('status').textContent = 'Statut: Non autorisé - Token invalide';
-            });
-
-            socket.on('duplicate_session', function() {
-                document.getElementById('status').textContent = 'Statut: Session dupliquée - Déconnecté';
-            });
-
-            socket.on('error_fetching_messages', function() {
-                document.getElementById('status').textContent = 'Statut: Erreur lors de la récupération des messages';
-            });
-
-            socket.on('disconnect', function() {
-                document.getElementById('status').textContent = 'Statut: Déconnecté';
-            });
+            socket.emit('authenticate', jwt);
         });
 
         document.getElementById('sendBtn').addEventListener('click', async function() {
@@ -125,8 +174,8 @@
                 return;
             }
 
-            if (!jwt) {
-                alert('Veuillez vous connecter d\'abord');
+            if (!isAuthenticated || !jwt) {
+                alert('Vous devez être connecté pour envoyer un message');
                 return;
             }
 
@@ -135,14 +184,12 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        // Utilisation du header Authorization au lieu de cookies
                         'Authorization': `Bearer ${jwt}`
                     },
                     body: JSON.stringify({
                         text: messageText,
                         markerID: markerID
                     })
-                    // Pas de credentials: 'include'
                 });
 
                 if (response.ok) {
@@ -170,6 +217,32 @@
             }
         });
 
+        function logout() {
+            jwt = null;
+            isAuthenticated = false;
+            document.getElementById('token').value = '';
+            document.getElementById('sendBtn').disabled = true;
+            document.getElementById('authMessage').textContent = 'Vous devez être connecté pour créer un message.';
+            document.getElementById('status').textContent = 'Statut: Déconnecté';
+            document.getElementById('authSection').innerHTML = `
+                <h2>Authentification (Optionnelle)</h2>
+                <p>Pour créer des messages, vous devez être connecté.</p>
+                <div class="form-group">
+                    <label for="token">Token JWT:</label>
+                    <input type="text" id="token" placeholder="Coller votre token JWT ici">
+                    <button id="connectBtn">Se connecter</button>
+                </div>
+            `;
+            document.getElementById('connectBtn').addEventListener('click', function() {
+                jwt = document.getElementById('token').value;
+                if (!jwt) {
+                    alert('Veuillez entrer un token JWT');
+                    return;
+                }
+                socket.emit('authenticate', jwt);
+            });
+        }
+
         function displayMessages(messages) {
             const messagesDiv = document.getElementById('messages');
             messagesDiv.innerHTML = '';
@@ -187,6 +260,21 @@
             });
             
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        async function fetchMessagesAPI() {
+            try {
+                const response = await fetch('http://localhost:3004/messages');
+                if (response.ok) {
+                    const data = await response.json();
+                    displayMessages(data.messages);
+                    document.getElementById('status').textContent = 'Statut: Messages chargés via API REST';
+                } else {
+                    document.getElementById('status').textContent = 'Statut: Erreur lors du chargement des messages';
+                }
+            } catch (error) {
+                document.getElementById('status').textContent = `Statut: Erreur de connexion - ${error.message}`;
+            }
         }
     </script>
 </body>

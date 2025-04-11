@@ -7,8 +7,9 @@ const router = Router();
 /**
  * GET /messages
  * Récupère tous les messages ou filtre par coordonnées
+ * Accessible sans authentification
  */
-router.get('/', verifyToken, (req: Request, res: Response) => {
+router.get('/', (req: Request, res: Response) => {
   try {
     const { markerID } = req.query;
 
@@ -31,7 +32,7 @@ router.get('/', verifyToken, (req: Request, res: Response) => {
 
 /**
  * POST /messages
- * Ajoute un nouveau message (TEST ONLY)
+ * Ajoute un nouveau message (nécessite authentification)
  */
 router.post('/', verifyToken, (req: Request, res: Response) => {
   try {
@@ -42,7 +43,7 @@ router.post('/', verifyToken, (req: Request, res: Response) => {
       return;
     }
 
-    const user = req.user?.username; // user ou username ça dépend de la forme de la requête
+    const user = req.user?.username;
 
     if (!user) {
       res.status(401).json({ message: 'Utilisateur non authentifié' });

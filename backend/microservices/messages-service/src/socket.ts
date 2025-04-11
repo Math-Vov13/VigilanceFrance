@@ -11,7 +11,6 @@ const activeUsers = new Map<string, string>(); // userid & socketid
 export function setupSocket(server: http.Server) {
   const io = new Server(server, {
     cors: {
-      // origin: "*", // Ne fonctionne pas avec credentials: true
       origin: true, 
       credentials: true
     }
@@ -19,6 +18,8 @@ export function setupSocket(server: http.Server) {
 
   io.on("connection", (socket) => {
     console.log(`Client connected: ${socket.id}`);
+    
+    sendAllMessages(socket);
 
     socket.on("authenticate", (token: string) => {
       try {
@@ -27,7 +28,7 @@ export function setupSocket(server: http.Server) {
 
         if (activeUsers.has(userId)) {
           const previousSocketId = activeUsers.get(userId);
-          if (previousSocketId && previousSocketId !== socket.id) { // déco ancien socket (verif par rapport a actuelle)
+          if (previousSocketId && previousSocketId !== socket.id) {
             const oldSocket = io.sockets.sockets.get(previousSocketId);
             if (oldSocket) {
               oldSocket.emit("duplicate_session");
@@ -40,7 +41,7 @@ export function setupSocket(server: http.Server) {
         (socket as any).user = payload;
 
         console.log("Authenticated user:", payload);
-        sendAllMessages(socket);
+        socket.emit("authentication_successful", { username: payload.username });
 
       } catch (err) {
         console.error("Authentication failed:", err);
@@ -61,10 +62,10 @@ export function setupSocket(server: http.Server) {
 
   async function sendAllMessages(socket: any) {
     try {
-      const messages = await getAllMessages(); // de db_messages.ts
-      socket.emit("all_messages", messages); // emit --> client
-    } catch (err) { // si erreur
-      console.error("Error fetching messages:", err); // debug
+      const messages = await getAllMessages();
+      socket.emit("all_messages", messages);
+    } catch (err) {
+      console.error("Error fetching messages:", err);
       socket.emit("error_fetching_messages");
     }
   }
