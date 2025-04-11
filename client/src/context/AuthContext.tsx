@@ -9,6 +9,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [initialized, setInitialized] = useState<boolean>(false);
+
+  // Fonction pour rafraîchir le token d'authentification
   const refreshAuthToken = useCallback(async (): Promise<boolean> => {
     const refreshToken = localStorage.getItem('refresh_token');
     
@@ -33,112 +36,142 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
   
+  // Fonction pour récupérer les informations de l'utilisateur
+  // Modifiez cette fonction dans votre AuthContext.tsx
+const fetchUserProfile = useCallback(async (): Promise<User | null> => {
+  try {
+    // Ajout d'un léger délai pour donner au serveur le temps de terminer l'enregistrement
+    if (localStorage.getItem('just_registered') === 'true') {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      localStorage.removeItem('just_registered');
+    }
+    
+    const response = await authApi.verifyToken();
+    console.log("Réponse du profil:", response.data); // Ajout pour débogage
+    
+    if (response.data?.data && response.data.data.id) {
+      const userData = response.data.data;
+      return {
+        id: userData.id,
+        firstName: userData.firstName || "",
+        lastName: userData.lastName || "",
+        email: userData.email || "",
+        profileImage: userData.profileImage || undefined
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error("Erreur lors de la récupération du profil:", error);
+    return null;
+  }
+}, []);
+  
+  // Vérifier l'état d'authentification au chargement
   useEffect(() => {
     const checkAuthStatus = async () => {
       setLoading(true);
+      
+      // Vérifier si un refresh token existe
       const refreshToken = localStorage.getItem('refresh_token');
       
       if (!refreshToken) {
         setLoading(false);
+        setInitialized(true);
         return;
       }
-  
-      try {
-        // Récupérer le profil de l'utilisateur
-        const response = await authApi.verifyToken();
+      
+      // Tenter de récupérer le profil utilisateur
+      let userProfile = await fetchUserProfile();
+      
+      // Si la récupération échoue, essayer de rafraîchir le token et réessayer
+      if (!userProfile) {
+        const refreshSuccess = await refreshAuthToken();
         
-        if (response.data && response.data.data) {
-          const userData = response.data.data;
+        if (refreshSuccess) {
+          userProfile = await fetchUserProfile();
           
-          if (userData && userData.id) {
-            setUser({
-              id: userData.id,
-              firstName: userData.firstName || "",
-              lastName: userData.lastName || "",
-              email: userData.email || "",
-              profileImage: userData.profileImage || undefined
-            });
-          }
-        }
-      } catch (err) {
-        console.error('Vérification du token échouée:', err);
-        
-        // Essayer de rafraîchir le token
-        try {
-          const refreshSuccess = await refreshAuthToken();
-          
-          if (refreshSuccess) {
-            // Si le refresh a réussi, essayer à nouveau de vérifier le token
-            const retryResponse = await authApi.verifyToken();
-            const userData = retryResponse.data.data;
-            
-            if (userData && userData.id) {
-              setUser({
-                id: userData.id,
-                firstName: userData.firstName || "",
-                lastName: userData.lastName || "",
-                email: userData.email || "",
-                profileImage: userData.profileImage || undefined
-              });
-            }
-          } else {
-            // Si le refresh échoue, effacer les données d'authentification
+          if (!userProfile) {
+            // Même après le refresh, impossible de récupérer le profil
             localStorage.removeItem('refresh_token');
-            setUser(null);
           }
-        } catch (refreshErr) {
-          console.error('Refresh de token échoué:', refreshErr);
+        } else {
+          // Échec du rafraîchissement, supprimer le token
           localStorage.removeItem('refresh_token');
-          setUser(null);
         }
-      } finally {
-        setLoading(false);
       }
+      
+      setUser(userProfile);
+      setLoading(false);
+      setInitialized(true);
     };
-  
+    
+    // Exécuter la vérification d'authentification au chargement
     checkAuthStatus();
     
     // Écouteur pour l'événement de session expirée
     const handleSessionExpired = () => {
+      console.log("Session expirée, déconnexion automatique");
       setUser(null);
       localStorage.removeItem('refresh_token');
     };
     
     window.addEventListener('auth:session-expired', handleSessionExpired);
     
+    // Nettoyer l'écouteur lors du démontage du composant
     return () => {
       window.removeEventListener('auth:session-expired', handleSessionExpired);
     };
-  }, [refreshAuthToken]);
+  }, [fetchUserProfile, refreshAuthToken]);
 
+  // Fonction de connexion
   const login = useCallback(async (email: string, password: string): Promise<ApiResponse<User>> => {
     setLoading(true);
     setError(null);
-
+  
     try {
       const response = await authApi.login(email, password);
       const { connected, user: username, _rft } = response.data;
-
+  
       if (!connected || !_rft) {
         throw new Error('Connexion échouée - Données invalides reçues du serveur');
       }
-
+  
       localStorage.setItem('refresh_token', _rft);
-
-      const userObject = {
+      
+      // Créer un utilisateur temporaire avec les informations de base
+      const tempUser = {
         id: "temp-id",
         firstName: username ? username.split(/(?=[A-Z])/)[0] || "" : "",
         lastName: username ? username.split(/(?=[A-Z])/).slice(1).join("") || "" : "",
         email: email,
         profileImage: undefined
       };
-
-      setUser(userObject);
-
+      
+      setUser(tempUser); // Définir l'utilisateur temporairement
+      
+      // Ajouter un délai avant de tenter de récupérer le profil
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Essayer de récupérer le profil complet, mais ne pas échouer si cela ne fonctionne pas
+      try {
+        const userProfile = await fetchUserProfile();
+        if (userProfile) {
+          setUser(userProfile);
+          return {
+            success: true,
+            message: "Connexion réussie",
+            data: userProfile
+          };
+        }
+      } catch (profileErr) {
+        console.warn("Impossible de récupérer le profil complet après la connexion, utilisation des données temporaires", profileErr);
+      }
+      
+      // Si la récupération du profil a échoué, retourner l'utilisateur temporaire
       return {
         success: true,
         message: "Connexion réussie",
-        data: userObject
+        data: tempUser
       };
     } catch (err) {
       console.error("Login error:", err);
@@ -148,33 +181,51 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setLoading(false);
     }
-  }, [setLoading, setError, setUser]);
+  }, [fetchUserProfile]);
+
+  // Fonction d'inscription
   const register = useCallback(async (userData: Omit<User, 'id'> & { password: string }): Promise<void> => {
     setLoading(true);
     setError(null);
-
+  
     try {
       const response = await authApi.register(userData);
-
+  
       if (!response || !response.data) {
-        throw new Error('Response invalid from server');
+        throw new Error('Réponse invalide du serveur');
       }
-
+  
       const { connected, _rft } = response.data;
-
+  
       if (!connected || !_rft) {
         throw new Error('Inscription échouée - Données invalides reçues du serveur');
       }
-
+  
       localStorage.setItem('refresh_token', _rft);
-      setUser({
+      localStorage.setItem('just_registered', 'true'); // Marquer l'inscription récente
+      
+      // Créer un utilisateur temporaire en attendant la récupération du profil
+      const tempUser = {
         id: "temp-id",
         firstName: userData.firstName,
         lastName: userData.lastName,
         email: userData.email,
         profileImage: userData.profileImage
-      });
-
+      };
+      
+      setUser(tempUser); // Définir l'utilisateur temporairement
+      
+      // Essayer de récupérer le profil complet, mais ne pas échouer si cela ne fonctionne pas
+      try {
+        const userProfile = await fetchUserProfile();
+        if (userProfile) {
+          setUser(userProfile);
+        }
+      } catch (profileErr) {
+        console.warn("Impossible de récupérer le profil complet après l'inscription, utilisation des données temporaires", profileErr);
+        // Continuer en utilisant les données temporaires
+      }
+  
     } catch (err) {
       console.error("Registration error:", err);
       const errorMessage = err instanceof Error ? err.message : "Une erreur est survenue lors de l'inscription";
@@ -183,8 +234,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setLoading(false);
     }
-  }, [setLoading, setError, setUser]);
+  }, [fetchUserProfile]);
 
+  // Fonction de déconnexion
   const logout = useCallback(async (): Promise<void> => {
     setLoading(true);
 
@@ -197,8 +249,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(null);
       setLoading(false);
     }
-  }, [setLoading, setUser]);
+  }, []);
 
+  // Fonction d'authentification Google
   const googleAuth = useCallback(async (token: string): Promise<ApiResponse<User>> => {
     setLoading(true);
     setError(null);
@@ -209,18 +262,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       localStorage.setItem('refresh_token', refreshToken);
 
-      setUser({
-        id: user.id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        profileImage: user.profileImage ?? undefined
-      });
+      // Récupérer le profil complet après l'authentification Google
+      const userProfile = await fetchUserProfile();
+      
+      if (!userProfile) {
+        throw new Error('Impossible de récupérer les informations du profil');
+      }
+      
+      setUser(userProfile);
 
       return {
         success: response.data.success,
         message: response.data.message,
-        data: user
+        data: userProfile
       };
     } catch (err) {
       const error = err as AxiosError<ApiResponse<null>>;
@@ -230,8 +284,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setLoading(false);
     }
-  }, [setLoading, setError, setUser]);
+  }, [fetchUserProfile]);
 
+  // Fonction d'authentification FranceConnect
   const franceConnectAuth = useCallback(async (code: string): Promise<ApiResponse<User>> => {
     setLoading(true);
     setError(null);
@@ -242,18 +297,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       localStorage.setItem('refresh_token', refreshToken);
 
-      setUser({
-        id: user.id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        profileImage: user.profileImage ?? undefined
-      });
+      // Récupérer le profil complet après l'authentification FranceConnect
+      const userProfile = await fetchUserProfile();
+      
+      if (!userProfile) {
+        throw new Error('Impossible de récupérer les informations du profil');
+      }
+      
+      setUser(userProfile);
 
       return {
         success: response.data.success,
         message: response.data.message,
-        data: user
+        data: userProfile
       };
     } catch (err) {
       const error = err as AxiosError<ApiResponse<null>>;
@@ -263,8 +319,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setLoading(false);
     }
-  }, [setLoading, setError, setUser]);
+  }, [fetchUserProfile]);
 
+  // Valeur du contexte d'authentification
   const authContextValue = useMemo(() => ({
     user,
     login,
@@ -275,8 +332,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     refreshAuthToken,
     isAuthenticated: !!user,
     loading,
-    error
-  }), [user, login, register, logout, googleAuth, franceConnectAuth, refreshAuthToken, loading, error]);
+    error,
+    initialized
+  }), [user, login, register, logout, googleAuth, franceConnectAuth, refreshAuthToken, loading, error, initialized]);
 
   return (
     <AuthContext.Provider value={authContextValue}>
@@ -284,7 +342,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     </AuthContext.Provider>
   );
 };
-
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
