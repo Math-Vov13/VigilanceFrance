@@ -1,351 +1,165 @@
 import { createContext, useState, ReactNode, useEffect, useMemo, useCallback, useContext } from 'react';
 import { User, AuthContextType } from '../types';
 import { ApiResponse, authApi } from '../services/api';
-import { AxiosError } from 'axios';
+import { tokenService } from '../services/tokenService';
+import { AxiosError, AxiosResponse } from 'axios';
 
-export const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [initialized, setInitialized] = useState<boolean>(false);
 
-  // Fonction pour rafraîchir le token d'authentification
+  useEffect(() => {
+    const initializeAuth = async () => {
+      // Check for the refresh token in the cookies
+      const token = tokenService.getRefreshToken();
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+
+      // If a refresh token exists, verify the token
+      try {
+        const { data } = await authApi.verifyToken();
+        if (data?.data?.id) {
+          setUser({
+            id: data.data.id,
+            firstName: data.data.firstName || '',
+            lastName: data.data.lastName || '',
+            email: data.data.email || '',
+            profileImage: data.data.profileImage || undefined,
+          });
+        }
+      } catch (err) {
+        console.error('Auth token verification failed:', err);
+        tokenService.clearRefreshToken(); // Clear token on failure
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeAuth();
+  }, []);
+
   const refreshAuthToken = useCallback(async (): Promise<boolean> => {
-    const refreshToken = localStorage.getItem('refresh_token');
-    
-    if (!refreshToken) {
-      return false;
-    }
-    
     try {
-      const response = await authApi.refreshToken();
-      
-      if (response.data && response.data._rft) {
-        localStorage.setItem('refresh_token', response.data._rft);
+      const { data } = await authApi.refreshToken();
+      if (data.connected && data._rft) {
+        tokenService.setRefreshToken(data._rft); // Store the new refresh token
         return true;
       }
-      
       return false;
     } catch (err) {
-      console.error('Échec du rafraîchissement du token:', err);
-      localStorage.removeItem('refresh_token');
-      setUser(null);
+      console.error('Failed to refresh token:', err);
+      tokenService.clearRefreshToken(); // Clear invalid refresh token
+      setUser(null); // Log the user out if the token refresh fails
       return false;
     }
   }, []);
-  
-  // Fonction pour récupérer les informations de l'utilisateur
-  // Modifiez cette fonction dans votre AuthContext.tsx
-const fetchUserProfile = useCallback(async (): Promise<User | null> => {
-  try {
-    // Ajout d'un léger délai pour donner au serveur le temps de terminer l'enregistrement
-    if (localStorage.getItem('just_registered') === 'true') {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      localStorage.removeItem('just_registered');
-    }
-    
-    const response = await authApi.verifyToken();
-    console.log("Réponse du profil:", response.data); // Ajout pour débogage
-    
-    if (response.data?.data && response.data.data.id) {
-      const userData = response.data.data;
-      return {
-        id: userData.id,
-        firstName: userData.firstName || "",
-        lastName: userData.lastName || "",
-        email: userData.email || "",
-        profileImage: userData.profileImage || undefined
-      };
-    }
-    return null;
-  } catch (error) {
-    console.error("Erreur lors de la récupération du profil:", error);
-    return null;
-  }
-}, []);
-  
-  // Vérifier l'état d'authentification au chargement
-  useEffect(() => {
-    const checkAuthStatus = async () => {
-      setLoading(true);
-      
-      // Vérifier si un refresh token existe
-      const refreshToken = localStorage.getItem('refresh_token');
-      
-      if (!refreshToken) {
-        setLoading(false);
-        setInitialized(true);
-        return;
-      }
-      
-      // Tenter de récupérer le profil utilisateur
-      let userProfile = await fetchUserProfile();
-      
-      // Si la récupération échoue, essayer de rafraîchir le token et réessayer
-      if (!userProfile) {
-        const refreshSuccess = await refreshAuthToken();
-        
-        if (refreshSuccess) {
-          userProfile = await fetchUserProfile();
-          
-          if (!userProfile) {
-            // Même après le refresh, impossible de récupérer le profil
-            localStorage.removeItem('refresh_token');
-          }
-        } else {
-          // Échec du rafraîchissement, supprimer le token
-          localStorage.removeItem('refresh_token');
-        }
-      }
-      
-      setUser(userProfile);
-      setLoading(false);
-      setInitialized(true);
-    };
-    
-    // Exécuter la vérification d'authentification au chargement
-    checkAuthStatus();
-    
-    // Écouteur pour l'événement de session expirée
-    const handleSessionExpired = () => {
-      console.log("Session expirée, déconnexion automatique");
-      setUser(null);
-      localStorage.removeItem('refresh_token');
-    };
-    
-    window.addEventListener('auth:session-expired', handleSessionExpired);
-    
-    // Nettoyer l'écouteur lors du démontage du composant
-    return () => {
-      window.removeEventListener('auth:session-expired', handleSessionExpired);
-    };
-  }, [fetchUserProfile, refreshAuthToken]);
 
-  // Fonction de connexion
   const login = useCallback(async (email: string, password: string): Promise<ApiResponse<User>> => {
     setLoading(true);
     setError(null);
-  
-    try {
-      const response = await authApi.login(email, password);
-      const { connected, user: username, _rft } = response.data;
-  
-      if (!connected || !_rft) {
-        throw new Error('Connexion échouée - Données invalides reçues du serveur');
-      }
-  
-      localStorage.setItem('refresh_token', _rft);
-      
-      // Créer un utilisateur temporaire avec les informations de base
-      const tempUser = {
-        id: "temp-id",
-        firstName: username ? username.split(/(?=[A-Z])/)[0] || "" : "",
-        lastName: username ? username.split(/(?=[A-Z])/).slice(1).join("") || "" : "",
-        email: email,
-        profileImage: undefined
-      };
-      
-      setUser(tempUser); // Définir l'utilisateur temporairement
-      
-      // Ajouter un délai avant de tenter de récupérer le profil
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Essayer de récupérer le profil complet, mais ne pas échouer si cela ne fonctionne pas
-      try {
-        const userProfile = await fetchUserProfile();
-        if (userProfile) {
-          setUser(userProfile);
-          return {
-            success: true,
-            message: "Connexion réussie",
-            data: userProfile
-          };
-        }
-      } catch (profileErr) {
-        console.warn("Impossible de récupérer le profil complet après la connexion, utilisation des données temporaires", profileErr);
-      }
-      
-      // Si la récupération du profil a échoué, retourner l'utilisateur temporaire
-      return {
-        success: true,
-        message: "Connexion réussie",
-        data: tempUser
-      };
-    } catch (err) {
-      console.error("Login error:", err);
-      const errorMessage = err instanceof Error ? err.message : "Une erreur est survenue lors de la connexion";
-      setError(errorMessage);
-      throw new Error(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  }, [fetchUserProfile]);
-
-  // Fonction d'inscription
-  const register = useCallback(async (userData: Omit<User, 'id'> & { password: string }): Promise<void> => {
-    setLoading(true);
-    setError(null);
-  
-    try {
-      const response = await authApi.register(userData);
-  
-      if (!response || !response.data) {
-        throw new Error('Réponse invalide du serveur');
-      }
-  
-      const { connected, _rft } = response.data;
-  
-      if (!connected || !_rft) {
-        throw new Error('Inscription échouée - Données invalides reçues du serveur');
-      }
-  
-      localStorage.setItem('refresh_token', _rft);
-      localStorage.setItem('just_registered', 'true'); // Marquer l'inscription récente
-      
-      // Créer un utilisateur temporaire en attendant la récupération du profil
-      const tempUser = {
-        id: "temp-id",
-        firstName: userData.firstName,
-        lastName: userData.lastName,
-        email: userData.email,
-        profileImage: userData.profileImage
-      };
-      
-      setUser(tempUser); // Définir l'utilisateur temporairement
-      
-      // Essayer de récupérer le profil complet, mais ne pas échouer si cela ne fonctionne pas
-      try {
-        const userProfile = await fetchUserProfile();
-        if (userProfile) {
-          setUser(userProfile);
-        }
-      } catch (profileErr) {
-        console.warn("Impossible de récupérer le profil complet après l'inscription, utilisation des données temporaires", profileErr);
-        // Continuer en utilisant les données temporaires
-      }
-  
-    } catch (err) {
-      console.error("Registration error:", err);
-      const errorMessage = err instanceof Error ? err.message : "Une erreur est survenue lors de l'inscription";
-      setError(errorMessage);
-      throw new Error(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  }, [fetchUserProfile]);
-
-  // Fonction de déconnexion
-  const logout = useCallback(async (): Promise<void> => {
-    setLoading(true);
 
     try {
-      await authApi.logout();
+      const { data } = await authApi.login(email, password);
+      if (!data.connected || !data._rft) throw new Error('Échec de la connexion');
+
+      tokenService.setRefreshToken(data._rft); // Store the refresh token
+
+      // Create user object from the login response
+      const userObject: User = {
+        id: 'temp-id', // You should replace this with actual user ID from response if available
+        firstName: data.user.split(/(?=[A-Z])/)[0] || '',
+        lastName: data.user.split(/(?=[A-Z])/).slice(1).join('') || '',
+        email,
+        profileImage: undefined, // Set this from data if available
+      };
+
+      setUser(userObject); // Update user state
+      return { success: true, message: 'Connexion réussie', data: userObject };
     } catch (err) {
-      console.error('Logout error:', err);
+      const message = err instanceof Error ? err.message : 'Erreur lors de la connexion';
+      setError(message);
+      throw new Error(message);
     } finally {
-      localStorage.removeItem('refresh_token');
-      setUser(null);
       setLoading(false);
     }
   }, []);
 
-  // Fonction d'authentification Google
-  const googleAuth = useCallback(async (token: string): Promise<ApiResponse<User>> => {
+  const register = useCallback(async (userData: Omit<User, 'id'> & { password: string }) => {
     setLoading(true);
     setError(null);
 
     try {
-      const response = await authApi.googleAuth(token);
-      const { user, refreshToken } = response.data.data;
+      const { data } = await authApi.register(userData);
+      if (!data.connected || !data._rft) throw new Error('Échec de l\'inscription');
 
-      localStorage.setItem('refresh_token', refreshToken);
-
-      // Récupérer le profil complet après l'authentification Google
-      const userProfile = await fetchUserProfile();
-      
-      if (!userProfile) {
-        throw new Error('Impossible de récupérer les informations du profil');
-      }
-      
-      setUser(userProfile);
-
-      return {
-        success: response.data.success,
-        message: response.data.message,
-        data: userProfile
-      };
+      tokenService.setRefreshToken(data._rft); // Store the refresh token
+      setUser({ ...userData, id: 'temp-id' }); // Replace 'temp-id' with actual user ID
     } catch (err) {
-      const error = err as AxiosError<ApiResponse<null>>;
-      const errorMessage = error.response?.data?.message ?? 'Une erreur est survenue avec l\'authentification Google';
-      setError(errorMessage);
-      throw new Error(errorMessage);
+      const message = err instanceof Error ? err.message : 'Erreur lors de l\'inscription';
+      setError(message);
+      throw new Error(message);
     } finally {
       setLoading(false);
     }
-  }, [fetchUserProfile]);
+  }, []);
 
-  // Fonction d'authentification FranceConnect
-  const franceConnectAuth = useCallback(async (code: string): Promise<ApiResponse<User>> => {
+  const logout = useCallback(async () => {
+    setLoading(true);
+    try {
+      await authApi.logout(); // API call to handle logout if necessary
+    } catch (err) {
+      console.error('Logout failed:', err);
+    } finally {
+      tokenService.clearRefreshToken(); // Clear the refresh token on logout
+      setUser(null); // Clear user data
+      setLoading(false);
+    }
+  }, []);
+
+  const handleOAuth = useCallback(async (providerFn: (tokenOrCode: string) => Promise<AxiosResponse<ApiResponse<{ user: User; refreshToken: string }>>>, tokenOrCode: string, errorMessage: string): Promise<ApiResponse<User>> => {
     setLoading(true);
     setError(null);
 
     try {
-      const response = await authApi.franceConnectAuth(code);
-      const { user, refreshToken } = response.data.data;
-
-      localStorage.setItem('refresh_token', refreshToken);
-
-      // Récupérer le profil complet après l'authentification FranceConnect
-      const userProfile = await fetchUserProfile();
-      
-      if (!userProfile) {
-        throw new Error('Impossible de récupérer les informations du profil');
-      }
-      
-      setUser(userProfile);
-
-      return {
-        success: response.data.success,
-        message: response.data.message,
-        data: userProfile
-      };
+      const { data } = await providerFn(tokenOrCode);
+      tokenService.setRefreshToken(data.data.refreshToken); // Store the new refresh token
+      setUser(data.data.user); // Set user from the OAuth provider
+      return { success: data.success, message: data.message, data: data.data.user };
     } catch (err) {
-      const error = err as AxiosError<ApiResponse<null>>;
-      const errorMessage = error.response?.data?.message ?? 'Une erreur est survenue avec FranceConnect';
-      setError(errorMessage);
-      throw new Error(errorMessage);
+      const msg = (err as AxiosError<ApiResponse<null>>).response?.data?.message ?? errorMessage;
+      setError(msg);
+      throw new Error(msg);
     } finally {
       setLoading(false);
     }
-  }, [fetchUserProfile]);
+  }, []);
 
-  // Valeur du contexte d'authentification
-  const authContextValue = useMemo(() => ({
+  const googleAuth = (token: string) => handleOAuth(authApi.googleAuth, token, 'Erreur Google Auth');
+  const franceConnectAuth = (code: string) => handleOAuth(authApi.franceConnectAuth, code, 'Erreur FranceConnect');
+
+  const contextValue = useMemo(() => ({
     user,
+    isAuthenticated: !!user, // Check if user exists for authentication status
+    loading,
+    error,
     login,
     register,
     logout,
     googleAuth,
     franceConnectAuth,
     refreshAuthToken,
-    isAuthenticated: !!user,
-    loading,
-    error,
-    initialized
-  }), [user, login, register, logout, googleAuth, franceConnectAuth, refreshAuthToken, loading, error, initialized]);
+  }), [user, loading, error, login, register, logout, googleAuth, franceConnectAuth, refreshAuthToken]);
 
-  return (
-    <AuthContext.Provider value={authContextValue}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
 };
+
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 };

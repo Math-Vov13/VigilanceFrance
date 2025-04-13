@@ -15,14 +15,13 @@ const app = express();
 
 app.use(morgan("combined"));
 app.use(cors({
-    origin: "http://localhost:5173",
-    credentials: true,
-    allowedHeaders: ['Content-Type', 'Authorization']
+    "origin": "http://localhost:5173",
+    credentials: true
 }));
 
 
 // PROXY
-app.use('/auth', rate_limiter(redisClient as RedisClientType, "3r/5s"), no_health_check, createProxyMiddleware({ target: 'http://auth-service:80', changeOrigin: true }));
+app.use('/auth', rate_limiter(redisClient as RedisClientType, "3r/5s"), no_health_check, createProxyMiddleware({ target: 'http://auth-service:80', changeOrigin: true}));
 app.use('/maps', rate_limiter(redisClient as RedisClientType, "5r/1s"), no_health_check, createProxyMiddleware({ target: 'http://maps-service:80', changeOrigin: true }));
 app.use('/mess', rate_limiter(redisClient as RedisClientType, "10r/1s"), no_health_check, createProxyMiddleware({ target: 'http://mess-service:80', changeOrigin: true }));
 app.use('/notifs', rate_limiter(redisClient as RedisClientType, "5r/1s"), no_health_check, createProxyMiddleware({ target: 'http://notifs-service:80', changeOrigin: true }));
