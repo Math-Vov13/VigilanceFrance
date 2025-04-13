@@ -84,4 +84,6 @@ async function checkMicroServices() {
         await checkMicroServices();
     }, 1000 * 60)
 }
-checkMicroServices(); // Start Verification
+setTimeout(async () => {
+    await checkMicroServices(); // Start Verification
+}, 1000 * 15) // Wait 15 seconds
