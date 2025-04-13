@@ -7,7 +7,7 @@ Ce projet est inspiré du 3ème projet du module Node.js et aspire à la notion 
 ## Équipe & Rôles
 - ACHOUCHI Rayane - Frontend & Design
 - VOVARD Mathéo - Backend, BDD & Microservices
-- MARQUES DINIS Joao Gabriel - Backend, Microservices
+- MARQUES DINIS Joao Gabriel - Backend, Messages Microservice
 
 ## Caractéristiques
 
@@ -26,12 +26,16 @@ Ce projet est inspiré du 3ème projet du module Node.js et aspire à la notion 
 - Shadcn/UI
 - Google Maps Platform
 - React Router
+- TypeScript
+- Socket.io
+- ExpressJS
+- 
 
 ## Installation
 
 1. Clonez le dépôt :
 ```bash
-git clone https://github.com/votre-username/vigilance-france.git
+git clone https://github.com/Math-Vov13/VigilanceFrance
 cd vigilance-france
 ```
 
