@@ -1,6 +1,13 @@
 # VigilanceFrance
 
 Une plateforme collaborative pour suivre et signaler les incidents partout en France.
+Ce projet est inspiré du 3ème projet du module Node.js et aspire à la notion de contribution dans la signalisation des dangers et à l'apport d'informations.
+
+
+## Équipe & Rôles
+- ACHOUCHI Rayane - Frontend & Design
+- VOVARD Mathéo - Backend, BDD & Microservices
+- MARQUES DINIS Joao Gabriel - Backend, Microservices
 
 ## Caractéristiques
 
