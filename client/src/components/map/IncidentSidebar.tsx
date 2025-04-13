@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Comment, Incident } from '../../types';
 import { Button } from '../ui/button';
-import { X, MapPin, Clock, User, AlertTriangle, ArrowUp, ArrowDown, Share2 } from 'lucide-react';
+import { X, MapPin, Clock, User, AlertTriangle, ArrowUp, Share2, CheckCircle } from 'lucide-react';
 import { CommentSection } from './CommentSection';
 import { incidentTypes, severityLevels } from '../../constants/constants';
 import { format } from 'date-fns';
@@ -13,6 +13,8 @@ interface IncidentSidebarProps {
   onAddComment: (incidentId: number, comment: Omit<Comment, 'id' | 'date'>) => void;
   onLikeComment?: (incidentId: number, commentId: number) => void;
   onReportComment?: (incidentId: number, commentId: number) => void;
+  onUpvote?: (incidentId: number) => void;
+  onMarkAsSolved?: (incidentId: number) => void;
 }
 
 export function IncidentSidebar({ 
@@ -20,9 +22,13 @@ export function IncidentSidebar({
   onClose,
   onAddComment,
   onLikeComment,
-  onReportComment
+  onReportComment,
+  onUpvote,
+  onMarkAsSolved
 }: IncidentSidebarProps) {
   const [showShareOptions, setShowShareOptions] = useState(false);
+  const [hasVoted, setHasVoted] = useState(false);
+  const [hasMarkedSolved, setHasMarkedSolved] = useState(false);
   
   // Get incident type info
   const incidentType = incidentTypes.find(t => t.value === incident.type) || {
@@ -45,6 +51,22 @@ export function IncidentSidebar({
     } catch (error) {
       console.error('Error formatting date:', error);
       return dateString;
+    }
+  };
+  
+  // Handle upvote
+  const handleUpvote = () => {
+    if (onUpvote && !hasVoted) {
+      onUpvote(incident.id);
+      setHasVoted(true);
+    }
+  };
+  
+  // Handle mark as solved
+  const handleMarkAsSolved = () => {
+    if (onMarkAsSolved && !hasMarkedSolved) {
+      onMarkAsSolved(incident.id);
+      setHasMarkedSolved(true);
     }
   };
   
@@ -77,6 +99,9 @@ export function IncidentSidebar({
     setShowShareOptions(false);
   };
   
+  // Check if incident is resolved
+  const isResolved = incident.status === 'resolved';
+  
   return (
     <div className="flex flex-col h-full bg-white shadow-lg border-l border-gray-200">
       {/* Header */}
@@ -107,7 +132,13 @@ export function IncidentSidebar({
             </span>
             
             {incident.status && (
-              <span className="px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+              <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                incident.status === 'resolved' 
+                  ? 'bg-green-100 text-green-800' 
+                  : incident.status === 'verified' 
+                    ? 'bg-blue-100 text-blue-800' 
+                    : 'bg-gray-100 text-gray-800'
+              }`}>
                 {incident.status === 'active' && 'En cours'}
                 {incident.status === 'verified' && 'Vérifié'}
                 {incident.status === 'resolved' && 'Résolu'}
@@ -164,15 +195,33 @@ export function IncidentSidebar({
           {/* Voting and actions */}
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center space-x-4">
-              <button className="flex items-center gap-1 text-gray-500 hover:text-blue-600">
+              <button 
+                className={`flex items-center gap-1 ${
+                  hasVoted 
+                    ? 'text-blue-600' 
+                    : 'text-gray-500 hover:text-blue-600'
+                }`}
+                onClick={handleUpvote}
+                disabled={hasVoted || isResolved}
+              >
                 <ArrowUp className="h-5 w-5" />
                 <span>{incident.upvotes || 0}</span>
               </button>
               
-              <button className="flex items-center gap-1 text-gray-500 hover:text-red-600">
-                <ArrowDown className="h-5 w-5" />
-                <span>{incident.downvotes || 0}</span>
-              </button>
+              {!isResolved && (
+                <button 
+                  className={`flex items-center gap-1 ${
+                    hasMarkedSolved 
+                      ? 'text-green-600' 
+                      : 'text-gray-500 hover:text-green-600'
+                  }`}
+                  onClick={handleMarkAsSolved}
+                  disabled={hasMarkedSolved || isResolved}
+                >
+                  <CheckCircle className="h-5 w-5" />
+                  <span>Résolu</span>
+                </button>
+              )}
             </div>
             
             <div className="relative">
@@ -189,30 +238,6 @@ export function IncidentSidebar({
               {showShareOptions && (
                 <div className="absolute right-0 mt-2 w-40 bg-white rounded-md shadow-lg z-20 border border-gray-200">
                   <ul className="py-1">
-                    <li>
-                      <button 
-                        className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
-                        onClick={() => handleShare('copy')}
-                      >
-                        Copier le lien
-                      </button>
-                    </li>
-                    <li>
-                      <button 
-                        className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
-                        onClick={() => handleShare('twitter')}
-                      >
-                        Twitter
-                      </button>
-                    </li>
-                    <li>
-                      <button 
-                        className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
-                        onClick={() => handleShare('facebook')}
-                      >
-                        Facebook
-                      </button>
-                    </li>
                     <li>
                       <button 
                         className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"

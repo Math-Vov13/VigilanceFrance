@@ -40,21 +40,20 @@ export interface Coordinates {
 }
 export interface Incident {
   id: number;
-  type: string;
-  title: string;
-  description: string;
-  location: string;
-  coordinates: Coordinates;
-  date: string;
-  severity: IncidentSeverity;
-  reportedBy: string;
-  comments: Comment[];
+  type: string;              
+  title: string;             
+  description: string;        
+  location: string;           
+  coordinates: Coordinates;   
+  date: string;              
   status?: 'active' | 'verified' | 'resolved' | 'unverified';
-  imageUrls?: string[];
-  verifiedBy?: string;
-  verifiedDate?: string;
-  upvotes?: number;
-  downvotes?: number;
+  severity: 'faible' | 'moyen' | 'élevé' | 'critique';
+  reportedBy: string;         
+  verifiedBy?: string;        
+  upvotes?: number;           
+  downvotes?: number;         
+  comments: Comment[];        
+  imageUrls?: string[];      
 }
 // Map component props
 export interface IncidentMapProps {
@@ -83,4 +82,24 @@ export interface Notification {
   date: string;
   read: boolean;
   relatedId?: number;
+}
+
+export interface VoteResponse {
+  connected: boolean;
+  issue_id: string;
+  votes: number;
+  voted: boolean;
+}
+
+export interface CreateVoteResponse {
+  user_id: string;
+  issue_id: string;
+  vote_id: string;
+}
+
+export interface SolvedResponse {
+  solved: boolean;
+  user_id: string;
+  issue_id: string;
+  vote_id: string;
 }

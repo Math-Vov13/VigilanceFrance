@@ -17,7 +17,6 @@ async function createSession(res: Response, agent: string, userID: string, userN
     res.cookie("Atk", access_token, {
         expires: new Date(Date.now() + 60 * 60 * 1000), // 1 hour
         httpOnly: true,
-        backend-microservices
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
     });

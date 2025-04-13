@@ -1,15 +1,15 @@
-// api.ts
-import axios, { AxiosError, AxiosRequestConfig} from 'axios';
-import { User } from '@/types';
+import axios, { AxiosError, AxiosRequestConfig } from 'axios';
+import { User, Incident } from '@/types';
 import { tokenService } from './tokenService';
 
-const API_GATEWAY_URL = import.meta.env.VITE_API_GATEWAY_URL ?? 'http://localhost:3000';
+const API_GATEWAY_URL = import.meta.env.VITE_API_GATEWAY_URL;
 const API_TIMEOUT = 15000;
 
 export interface ApiResponse<T = unknown> {
   success: boolean;
   message?: string;
-  data: T;
+  data?: T;
+  content?: T; // Ajout du champ content pour la compatibilité
 }
 
 const apiClient = axios.create({
@@ -60,13 +60,151 @@ export const authApi = {
   googleAuth: (token: string) => apiClient.post('/auth/auth/google', { token }),
   franceConnectAuth: (code: string) => apiClient.post('/auth/auth/france-connect', { code })
 };
+const extractData = <T>(response: any): T => {
+  if (response.data?.content) {
+    return response.data.content;
+  } else if (response.data?.data) {
+    return response.data.data;
+  } else if (response.data) {
+    return response.data;
+  }
+  return response as T;
+};
 
 export const mapsApi = {
-  getIncidents: (filters?: { type?: string; severity?: string; startDate?: string; endDate?: string; location?: string }) => apiClient.get('/maps/incidents', { params: filters }),
-  getIncidentById: (id: string | number) => apiClient.get(`/maps/incidents/${id}`),
-  createIncident: (data: User) => apiClient.post('/maps/incidents', data),
-  updateIncident: (id: string | number, data: User) => apiClient.put(`/maps/incidents/${id}`, data),
-  addComment: (id: string | number, text: string) => apiClient.post(`/maps/incidents/${id}/comments`, { text })
+  // Récupération des incidents
+  getIncidents: async (filters?: { type?: string; severity?: string; startDate?: string; endDate?: string; location?: string }) => {
+    try {
+      const response = await apiClient.get('/maps/interactions/issues/show', { params: filters });
+      return extractData<Incident[]>(response);
+    } catch (error) {
+      console.error('Error fetching incidents:', error);
+      throw error;
+    }
+  },
+  
+  getIncidentById: async (id: string | number) => {
+    try {
+      const response = await apiClient.get(`/maps/interactions/issues/${id}`);
+      return extractData<Incident>(response);
+    } catch (error) {
+      console.error(`Error fetching incident ${id}:`, error);
+      throw error;
+    }
+  },
+  
+  createIncident: async (data: Omit<Incident, 'id' | 'comments'>) => {
+    try {
+      const response = await apiClient.post('/maps/interactions/issues/create', data);
+      return extractData<Incident>(response);
+    } catch (error) {
+      console.error('Error creating incident:', error);
+      throw error;
+    }
+  },
+  
+  updateIncident: async (id: string | number, data: Partial<Incident>) => {
+    try {
+      const response = await apiClient.put(`/maps/interactions/issues/${id}`, data);
+      return extractData<Incident>(response);
+    } catch (error) {
+      console.error(`Error updating incident ${id}:`, error);
+      throw error;
+    }
+  },
+  
+  // Commentaires
+  addComment: async (id: string | number, text: string, username: string) => {
+    try {
+      const response = await apiClient.post(`/maps/interactions/issues/${id}/comments`, { text, username });
+      return extractData<{ id: number; date: string }>(response);
+    } catch (error) {
+      console.error(`Error adding comment to incident ${id}:`, error);
+      throw error;
+    }
+  },
+  
+  likeComment: async (incidentId: string | number, commentId: number) => {
+    try {
+      const response = await apiClient.post(`/maps/interactions/issues/${incidentId}/comments/${commentId}/like`);
+      return extractData<{ likes: number }>(response);
+    } catch (error) {
+      console.error(`Error liking comment ${commentId}:`, error);
+      throw error;
+    }
+  },
+  
+  reportComment: async (incidentId: string | number, commentId: number, reason?: string) => {
+    try {
+      const response = await apiClient.post(`/maps/interactions/issues/${incidentId}/comments/${commentId}/report`, { reason });
+      return extractData<{ reported: boolean }>(response);
+    } catch (error) {
+      console.error(`Error reporting comment ${commentId}:`, error);
+      throw error;
+    }
+  },
+  
+  // Votes sur les incidents
+  getVotes: async (incidentId: string | number) => {
+    try {
+      const response = await apiClient.get(`/maps/interactions/votes/upvotes?issue_id=${incidentId}`);
+      return extractData<{ upvotes: number; downvotes: number; userVoted: boolean }>(response);
+    } catch (error) {
+      console.error(`Error getting votes for incident ${incidentId}:`, error);
+      throw error;
+    }
+  },
+  
+  addVote: async (incidentId: string | number) => {
+    try {
+      const response = await apiClient.post(`/maps/interactions/votes/create?issue_id=${incidentId}`);
+      return extractData<{ vote_id: string }>(response);
+    } catch (error) {
+      console.error(`Error adding vote to incident ${incidentId}:`, error);
+      throw error;
+    }
+  },
+  
+  removeVote: async (incidentId: string | number) => {
+    try {
+      const response = await apiClient.delete(`/maps/interactions/votes?issue_id=${incidentId}`);
+      return extractData<string>(response);
+    } catch (error) {
+      console.error(`Error removing vote from incident ${incidentId}:`, error);
+      throw error;
+    }
+  },
+  
+  // Marquer un incident comme résolu
+  getSolvedVotes: async (incidentId: string | number) => {
+    try {
+      const response = await apiClient.get(`/maps/interactions/solved/upvotes?issue_id=${incidentId}`);
+      return extractData<{ votes: number; voted: boolean }>(response);
+    } catch (error) {
+      console.error(`Error getting solved votes for incident ${incidentId}:`, error);
+      throw error;
+    }
+  },
+  
+  markAsSolved: async (incidentId: string | number) => {
+    try {
+      const response = await apiClient.post(`/maps/interactions/solved/create?issue_id=${incidentId}`);
+      return extractData<{ solved: boolean; vote_id: string }>(response);
+    } catch (error) {
+      console.error(`Error marking incident ${incidentId} as solved:`, error);
+      throw error;
+    }
+  },
+  
+  unmarkAsSolved: async (incidentId: string | number) => {
+    try {
+      const response = await apiClient.delete(`/maps/interactions/solved?issue_id=${incidentId}`);
+      return extractData<string>(response);
+    } catch (error) {
+      console.error(`Error unmarking incident ${incidentId} as solved:`, error);
+      throw error;
+    }
+  }
 };
 
 export const notifsApi = {
@@ -83,4 +221,22 @@ export const messApi = {
   createConversation: (participants: string[], title?: string) => apiClient.post('/mess/conversations', { participants, title })
 };
 
-export default { auth: authApi, maps: mapsApi, notifs: notifsApi, mess: messApi };
+// Pour la compatibilité avec le code existant
+export const incidentsApi = {
+  getAll: mapsApi.getIncidents,
+  create: mapsApi.createIncident,
+};
+
+export const votesApi = {
+  getVotes: mapsApi.getVotes,
+  addVote: mapsApi.addVote,
+  removeVote: mapsApi.removeVote,
+};
+
+export const solvedApi = {
+  getSolvedVotes: mapsApi.getSolvedVotes,
+  markAsSolved: mapsApi.markAsSolved,
+  unmarkAsSolved: mapsApi.unmarkAsSolved,
+};
+
+export default { auth: authApi, maps: mapsApi, notifs: notifsApi, mess: messApi, incidents: incidentsApi, votes: votesApi, solved: solvedApi };
