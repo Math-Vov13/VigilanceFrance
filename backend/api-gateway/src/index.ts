@@ -6,7 +6,7 @@ import axios from 'axios';
 import { no_health_check } from "./middlewares/protect_healthcheck";
 import { RedisClientType } from 'redis';
 import { rate_limiter } from "./middlewares/rate_limiter";
-import { redisClient } from "./utils/redis";
+import { redisClient } from "./models/redis";
 
 const PORT = process.env.PORT || 3000;
 const app = express();
@@ -31,7 +31,7 @@ app.use('/v1/notifs', rate_limiter(redisClient as RedisClientType, "5r/1s"), no_
 
 // Server Listen
 const server = app.listen(PORT, () => {
-    console.log(`[API GATEWAY] Running Gateway on (http://localhost:${PORT})`);
+    console.log(`[${process.env.TAG || 'server'}]: Running Gateway on (http://localhost:${PORT})`);
 })
 
 
@@ -40,6 +40,7 @@ process.on("SIGTERM", () => {
     console.debug('SIGTERM signal received: closing HTTP server');
     server.close(() => {
         console.debug('HTTP server closed!');
+        console.log(`[${process.env.TAG || 'server'}]: Server closed!`);
     })
 })
 

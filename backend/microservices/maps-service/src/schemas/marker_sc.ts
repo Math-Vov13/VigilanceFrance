@@ -15,7 +15,7 @@ export const MarkerDB = z.object({
     location: z.string(),
     coordinates: z.object({
         lat: z.number(),
-        long: z.number()
+        lon: z.number()
     }),
 })
 
@@ -28,6 +28,6 @@ export const IssueCreate = z.object({
     location: z.string(),
     coordinates: z.object({
         lat: z.number(),
-        long: z.number()
+        lon: z.number()
     }),
 })

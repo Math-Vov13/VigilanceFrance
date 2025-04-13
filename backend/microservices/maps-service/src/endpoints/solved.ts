@@ -10,7 +10,7 @@ export const router = Router();
 
 
 router.get("/", (req: Request, res: Response) => {
-    res.send("Solved Votes endpoint.")
+    res.send("Solved Votes endpoint")
 })
 
 

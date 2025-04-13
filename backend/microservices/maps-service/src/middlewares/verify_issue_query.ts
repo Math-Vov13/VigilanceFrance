@@ -15,7 +15,7 @@ declare global {
 export const verify_issue_id = async (req: Request, res: Response, next: NextFunction) => {
     const { issue_id } = req.query;
     if (! issue_id) {
-        res.sendStatus(400);
+        res.status(400).send("Query: 'issue_id' can't be null!");
         return;
     }
 

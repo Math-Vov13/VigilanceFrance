@@ -10,7 +10,8 @@ ARG GROUP_ID=433
 # Env
 ENV CONT_IMG_VER=${CONT_IMG_VER}
 ENV PORT=${SERVER_PORT}
-ENV NODE_ENV=production
+ENV NODE_ENV=dev
+ENV TAG="Auth Service"
 
 # Build env
 COPY . ./app
