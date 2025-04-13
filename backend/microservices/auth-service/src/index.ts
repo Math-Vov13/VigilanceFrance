@@ -5,6 +5,7 @@ import morgan from 'morgan';
 import cors from 'cors';
 import os from 'os';
 import cookieParser from "cookie-parser";
+import "./models/mongo-connector";
 
 // Vars
 const app = express();
@@ -62,11 +63,11 @@ app.get("/health", (req: Request, res: Response) => {
 // Server Listen
 const server = app.listen(PORT, (err) => {
     if (err !== undefined) {
-        console.error("[server]: Error while running server:", err);
+        console.error(`[${process.env.TAG || 'server'}]: Error while running server:`, err);
         return;
     }
 
-    console.log(`[server]: Running Server on http://localhost:${PORT}`);
+    console.log(`[${process.env.TAG || 'server'}]: Running Server on http://localhost:${PORT}`);
 });
 
 // Close Server with Event
@@ -74,5 +75,6 @@ process.on("SIGTERM", () => {
     console.debug('SIGTERM signal received: closing HTTP server');
     server.close(() => {
         console.debug('HTTP server closed!');
+        console.log(`[${process.env.TAG || 'server'}]: Server closed!`);
     })
 })

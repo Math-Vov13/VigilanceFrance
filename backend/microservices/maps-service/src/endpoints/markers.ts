@@ -9,20 +9,21 @@ export const router = Router();
 
 
 router.get("/", (req: Request, res: Response) => {
-    res.send("Markers endpoint");
+    res.send("Issues endpoint");
 })
 
 
-router.get("/show", async (req: Request, res: Response) => {
+router.get("/show", verify_access_token(false), async (req: Request, res: Response) => {
     const results = await getIssues();
 
     res.send({
-        length: results.length,
-        content: results
+        "connected": req.access_token_content !== undefined,
+        "length": results.length,
+        "content": results
     });
 })
 
-router.post("/create", verify_access_token, body_schema_validation(IssueCreate), async (req: Request, res: Response) => {
+router.post("/create", verify_access_token(true), body_schema_validation(IssueCreate), async (req: Request, res: Response) => {
     const issue = await createIssue(req.access_token_content as string, req.body);
 
     if (!issue) {

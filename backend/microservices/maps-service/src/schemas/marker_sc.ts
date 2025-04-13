@@ -4,6 +4,7 @@ import z from "zod";
 export const MarkerDB = z.object({
     id: z.string(),
     reporterID: z.string(),
+    solved_at: z.date().nullable(),
 
     type: z.string(),
     title: z.string(),  
@@ -14,7 +15,7 @@ export const MarkerDB = z.object({
     location: z.string(),
     coordinates: z.object({
         lat: z.number(),
-        long: z.number()
+        lon: z.number()
     }),
 })
 
@@ -27,6 +28,6 @@ export const IssueCreate = z.object({
     location: z.string(),
     coordinates: z.object({
         lat: z.number(),
-        long: z.number()
+        lon: z.number()
     }),
 })
