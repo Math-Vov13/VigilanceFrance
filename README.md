@@ -36,7 +36,7 @@ Ce projet est inspiré du 3ème projet du module Node.js et aspire à la notion 
 1. Clonez le dépôt :
 ```bash
 git clone https://github.com/Math-Vov13/VigilanceFrance
-cd vigilance-france
+cd VigilanceFrance
 ```
 
 2. Installez les dépendances :
