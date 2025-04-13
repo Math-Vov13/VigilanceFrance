@@ -17,14 +17,16 @@ async function createSession(res: Response, agent: string, userID: string, userN
     res.cookie("Atk", access_token, {
         expires: new Date(Date.now() + 60 * 60 * 1000), // 1 hour
         httpOnly: true,
+        backend-microservices
         secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
+        sameSite: "lax",
     });
 
     return {
         "connected": true,
         "user": userName,
-        "_rft": refreshToken,
+        "_rft": refreshToken
+        
     };
 };
 
@@ -35,10 +37,10 @@ router.get("/", (req: Request, res: Response) => {
 
 /**
  * Refresh token
- * @description Renouvelle le token d'authentification de l'utilisateur
+ * @description
  */
 router.post("/refresh", verify_refresh_token, async (req: Request, res: Response) => {
-    // Renouvelle le token d'authentification de l'utilisateur à partir du token refresh
+
     const agent = req.headers["user-agent"];
     if (agent === undefined) {
         res.status(400).send("User agent is undefined");

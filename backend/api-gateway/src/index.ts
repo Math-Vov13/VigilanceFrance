@@ -1,5 +1,6 @@
 import express from "express";
 import { createProxyMiddleware } from "http-proxy-middleware";
+import { IncomingMessage, ServerResponse } from "http";
 import morgan from 'morgan';
 import cors from 'cors';
 import axios from 'axios';
@@ -15,18 +16,15 @@ const app = express();
 app.use(morgan("combined"));
 app.use(cors({
     "origin": "http://localhost:5173",
-    "credentials": true,
-    "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    "allowedHeaders": ["Content-Type", "Authorization"],
-    "exposedHeaders": ["Content-Type", "Authorization"]
+    credentials: true
+
 }));
 
-
-// PROXY
 app.use('/v1/auth', rate_limiter(redisClient as RedisClientType, "4r/1s"), no_health_check, createProxyMiddleware({ target: 'http://auth-service:80', changeOrigin: true }));
 app.use('/v1/maps', rate_limiter(redisClient as RedisClientType, "6r/1s"), no_health_check, createProxyMiddleware({ target: 'http://maps-service:80', changeOrigin: true }));
 app.use('/v1/mess', rate_limiter(redisClient as RedisClientType, "10r/1s"), no_health_check, createProxyMiddleware({ target: 'http://mess-service:80', changeOrigin: true }));
 app.use('/v1/notifs', rate_limiter(redisClient as RedisClientType, "5r/1s"), no_health_check, createProxyMiddleware({ target: 'http://notifs-service:80', changeOrigin: true }));
+
 
 
 // Server Listen
