@@ -5,7 +5,7 @@ import morgan from 'morgan';
 import cors from 'cors';
 import os from 'os';
 import cookieParser from "cookie-parser";
-import "./models/mongo-connector";
+import "./models/mongo-connector"; // NE PAS RETIRER !
 
 // Vars
 const app = express();
@@ -15,8 +15,11 @@ const PORT = process.env["PORT"] || 3001;
 app.use(morgan("dev"));
 app.use(cors({
     "origin": "http://localhost:5173",
-    "credentials": true
-}))
+    "credentials": true,
+    "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    "allowedHeaders": ["Content-Type", "Authorization"],
+    "exposedHeaders": ["Content-Type", "Authorization"]
+}));
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

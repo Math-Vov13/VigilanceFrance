@@ -1,22 +1,20 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
-import http from 'http';
 import os from 'os';
 import cookieParser from 'cookie-parser';
 import messagesRouter from './endpoint/messages';
-// import { setupWebSocket } from './ws';
-// import { setupSocket } from './socket';
-
+import { setupSocket } from './socket';
+import "./model/mongo-connector";
 
 const app = express();
 const PORT = process.env["PORT"] || 3004;
 
-
-
+// Configuration CORS - spécifiez une origine précise ou ajustez le client pour ne pas utiliser withCredentials
 app.use(cors({
-    "origin": "*",
-    "credentials": true
+    // origin: "*", // Ne fonctionne pas avec credentials: true
+    origin: true, // Réfléchit l'origine de la requête
+    credentials: true
 }));
 app.use(morgan("dev"));
 app.use(express.json());
@@ -29,7 +27,7 @@ app.get('/', (req: Request, res: Response) => {
     return;
 });
 
-// Endpoint de health check
+    // health check
 app.get("/health", (req: Request, res: Response) => {
     res.setHeader("Cache-Control", "no-cache");
     // Understanding Health Check inside MicroServices (https://testfully.io/blog/api-health-check-monitoring/)
@@ -53,15 +51,16 @@ app.get("/health", (req: Request, res: Response) => {
 });
 
 const server = app.listen(PORT, () => {
-    console.log(`[server]: Running Server on http://localhost:${PORT}`);
+    console.log(`[${process.env.TAG}]: Running Server on http://localhost:${PORT}`);
 });
 
+setupSocket(server);
 // setupWebSocket(server);
-// setupSocket(server);
 
 process.on("SIGTERM", () => {
     console.debug('SIGTERM signal received: closing HTTP server');
     server.close(() => {
         console.debug('HTTP server closed!');
-    });
-});
+        console.log(`[${process.env.TAG || 'server'}]: Server closed!`);
+    })
+})

@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { decode_AccessToken } from "../security/access_token";
+import mongoose from "mongoose";
 
 
 declare global {
@@ -27,6 +28,16 @@ export const verify_access_token = (strict: boolean) => async (req: Request, res
     // Decode the token
     const decodedToken = decode_AccessToken(token, req.headers["user-agent"] as string);
     if (! decodedToken) {
+        if (strict === false) {
+            next(); // Continue
+        } else {
+            res.status(401).send("Invalid access token");
+        }
+        return;
+    }
+
+    // Verify if ID is valid
+    if (!mongoose.Types.ObjectId.isValid(decodedToken)) {
         if (strict === false) {
             next(); // Continue
         } else {

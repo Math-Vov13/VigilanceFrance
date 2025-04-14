@@ -15,19 +15,19 @@ export const MarkerDB = z.object({
     location: z.string(),
     coordinates: z.object({
         lat: z.number(),
-        lon: z.number()
+        lng: z.number()
     }),
 })
 
 export const IssueCreate = z.object({
-    type: z.string(),
-    title: z.string(),
-    description: z.string(),
+    type: z.string().min(6),
+    title: z.string().min(6),
+    description: z.string().min(6),
 
-    severity: z.string(),
-    location: z.string(),
+    severity: z.string().min(6),
+    location: z.string().min(6),
     coordinates: z.object({
-        lat: z.number(),
-        lon: z.number()
+        lat: z.number().positive().or( z.number().negative() ),
+        lng: z.number().positive().or( z.number().negative() )
     }),
 })

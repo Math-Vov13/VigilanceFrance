@@ -1,7 +1,7 @@
 import { Request, Response, Router } from "express";
 import { verify_access_token } from "../middlewares/verify_aToken";
 import { verify_issue_id } from "../middlewares/verify_issue_query";
-import { createSolvedVote, getSolvedVote_byUser, getSolvedVotes_byIssueId, removeSolvedVote } from "../models/solved_db";
+import { createSolvedVote, getSolvedVotes_byIssueId, removeSolvedVote } from "../models/solved_db";
 import { getVotes_byIssueId } from "../models/votes_db";
 import { solvedIssue } from "../models/marker_db";
 
@@ -17,19 +17,49 @@ router.get("/", (req: Request, res: Response) => {
 router.get("/upvotes", verify_access_token(false), verify_issue_id, async (req: Request, res: Response) => {
     const { issue_id } = req.query;
 
-    const results = await getVotes_byIssueId(issue_id as string);
+    const results = await getSolvedVotes_byIssueId(issue_id as string);
+    console.log("Resultats:", results);
+    if (! results) {
+        res.sendStatus(500);
+        return;
+    }
+
+    const votes = results.solved;
+    let user_has_voted = false;
+    if (req.access_token_content !== undefined) {
+        // Connected
+        for (const vote of votes) {
+            if (vote.user_id === req.access_token_content) {
+                user_has_voted = true;
+            }
+        }
+    }
 
     res.json({
         "connected": req.access_token_content !== undefined,
         "issue_id": issue_id,
-        "votes": results.length,
-        "voted": req.access_token_content !== undefined? (
-            await getSolvedVote_byUser(req.access_token_content as string, issue_id as string) !== null
-        ) : false
+        "votes": votes.length,
+        "voted": user_has_voted
+        // "voted": req.access_token_content !== undefined? (
+        //     await getVote_byUser(req.access_token_content as string, issue_id as string) !== null
+        // ) : false
     })
+
+    // const { issue_id } = req.query;
+
+    // const results = await getVotes_byIssueId(issue_id as string);
+
+    // res.json({
+    //     "connected": req.access_token_content !== undefined,
+    //     "issue_id": issue_id,
+    //     "votes": results.length,
+    //     "voted": req.access_token_content !== undefined? (
+    //         await getSolvedVote_byUser(req.access_token_content as string, issue_id as string) !== null
+    //     ) : false
+    // })
 })
 
-router.post("/create", verify_access_token(true), verify_issue_id, async (req: Request, res: Response) => {
+router.post("/vote", verify_access_token(true), verify_issue_id, async (req: Request, res: Response) => {
     const { issue_id } = req.query;
 
     const vote = await createSolvedVote(req.access_token_content as string, issue_id as string);
@@ -61,7 +91,7 @@ router.post("/create", verify_access_token(true), verify_issue_id, async (req: R
     })
 })
 
-router.delete("/", verify_access_token(true), verify_issue_id, async (req: Request, res: Response) => {
+router.delete("/vote", verify_access_token(true), verify_issue_id, async (req: Request, res: Response) => {
     const { issue_id } = req.query;
 
     const response = await removeSolvedVote(req.access_token_content as string, issue_id as string);

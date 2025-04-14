@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Client pour l'API Messages</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .messages {
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-bottom: 20px;
+        }
+        .message {
+            margin-bottom: 10px;
+            padding: 10px;
+            background-color: #f1f1f1;
+            border-radius: 5px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 8px;
+        }
+        button {
+            padding: 8px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+        }
+        .auth-section {
+            background-color: #f9f9f9;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        .message-form {
+            padding: 15px;
+            background-color: #f0f8ff;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        .disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Client pour l'API Messages</h1>
+
+    <div class="auth-section" id="authSection">
+        <h2>Authentification (Optionnelle)</h2>
+        <p>Pour créer des messages, vous devez être connecté.</p>
+
+        <div class="form-group">
+            <label for="token">Token JWT:</label>
+            <input type="text" id="token" placeholder="Coller votre token JWT ici">
+            <button id="connectBtn">Se connecter</button>
+        </div>
+    </div>
+
+    <h2>Messages</h2>
+    <div class="messages" id="messages"></div>
+
+    <div class="message-form" id="messageForm">
+        <h2>Créer un message</h2>
+        <p id="authMessage">Vous devez être connecté pour créer un message.</p>
+
+        <div class="form-group">
+            <label for="messageText">Nouveau message:</label>
+            <textarea id="messageText" rows="3"></textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="markerID">Marker ID:</label>
+            <input type="text" id="markerID" placeholder="ID du marqueur">
+        </div>
+
+        <button id="sendBtn" disabled>Envoyer le message</button>
+    </div>
+
+    <div class="status" id="status">Statut: Chargement des messages...</div>
+
+    <script>
+        let socket;
+        let jwt;
+        let isAuthenticated = false;
+        
+        function connectSocket() {
+            socket = io('http://localhost:3004');
+            
+            socket.on('connect', function() {
+                document.getElementById('status').textContent = 'Statut: Connecté au WebSocket';
+            });
+
+            socket.on('all_messages', function(data) {
+                document.getElementById('status').textContent = 'Statut: Messages reçus';
+                displayMessages(data.messages);
+            });
+
+            socket.on('authentication_successful', function(data) {
+                isAuthenticated = true;
+                document.getElementById('status').textContent = `Statut: Authentifié en tant que ${data.username}`;
+                document.getElementById('authMessage').textContent = 'Vous êtes connecté. Vous pouvez créer des messages.';
+                document.getElementById('sendBtn').disabled = false;
+                document.getElementById('authSection').innerHTML = `<h2>Authentifié</h2><p>Connecté en tant que ${data.username}</p><button id="logoutBtn">Se déconnecter</button>`;
+                document.getElementById('logoutBtn').addEventListener('click', logout);
+            });
+
+            socket.on('unauthorized', function() {
+                document.getElementById('status').textContent = 'Statut: Échec de l\'authentification - Token invalide';
+                isAuthenticated = false;
+            });
+
+            socket.on('duplicate_session', function() {
+                document.getElementById('status').textContent = 'Statut: Session dupliquée - Déconnecté';
+                logout();
+            });
+
+            socket.on('error_fetching_messages', function() {
+                document.getElementById('status').textContent = 'Statut: Erreur lors de la récupération des messages';
+            });
+
+            socket.on('disconnect', function() {
+                document.getElementById('status').textContent = 'Statut: Déconnecté du WebSocket';
+            });
+        }
+
+        window.addEventListener('load', function() {
+            connectSocket();
+        });
+
+        document.getElementById('connectBtn').addEventListener('click', function() {
+            jwt = document.getElementById('token').value;
+            if (!jwt) {
+                alert('Veuillez entrer un token JWT');
+                return;
+            }
+
+            if (!socket || !socket.connected) {
+                connectSocket();
+            }
+            
+            socket.emit('authenticate', jwt);
+        });
+
+        document.getElementById('sendBtn').addEventListener('click', async function() {
+            const messageText = document.getElementById('messageText').value;
+            const markerID = document.getElementById('markerID').value;
+
+            if (!messageText) {
+                alert('Veuillez entrer un message');
+                return;
+            }
+
+            if (!isAuthenticated || !jwt) {
+                alert('Vous devez être connecté pour envoyer un message');
+                return;
+            }
+
+            try {
+                const response = await fetch('http://localhost:3004/messages', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${jwt}`
+                    },
+                    body: JSON.stringify({
+                        text: messageText,
+                        markerID: markerID
+                    })
+                });
+
+                if (response.ok) {
+                    const newMessage = await response.json();
+                    document.getElementById('messageText').value = '';
+                    
+                    // Ajouter le nouveau message à l'affichage
+                    const messagesDiv = document.getElementById('messages');
+                    const messageElement = document.createElement('div');
+                    messageElement.className = 'message';
+                    messageElement.innerHTML = `
+                        <strong>${newMessage.user}</strong> 
+                        <small>(${new Date(newMessage.date).toLocaleString()})</small>
+                        <p>${newMessage.text}</p>
+                        <small>Marker: ${newMessage.markerID}</small>
+                    `;
+                    messagesDiv.appendChild(messageElement);
+                    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+                } else {
+                    const error = await response.json();
+                    alert(`Erreur: ${error.message}`);
+                }
+            } catch (error) {
+                alert(`Erreur: ${error.message}`);
+            }
+        });
+
+        function logout() {
+            jwt = null;
+            isAuthenticated = false;
+            document.getElementById('token').value = '';
+            document.getElementById('sendBtn').disabled = true;
+            document.getElementById('authMessage').textContent = 'Vous devez être connecté pour créer un message.';
+            document.getElementById('status').textContent = 'Statut: Déconnecté';
+            document.getElementById('authSection').innerHTML = `
+                <h2>Authentification (Optionnelle)</h2>
+                <p>Pour créer des messages, vous devez être connecté.</p>
+                <div class="form-group">
+                    <label for="token">Token JWT:</label>
+                    <input type="text" id="token" placeholder="Coller votre token JWT ici">
+                    <button id="connectBtn">Se connecter</button>
+                </div>
+            `;
+            document.getElementById('connectBtn').addEventListener('click', function() {
+                jwt = document.getElementById('token').value;
+                if (!jwt) {
+                    alert('Veuillez entrer un token JWT');
+                    return;
+                }
+                socket.emit('authenticate', jwt);
+            });
+        }
+
+        function displayMessages(messages) {
+            const messagesDiv = document.getElementById('messages');
+            messagesDiv.innerHTML = '';
+            
+            messages.forEach(message => {
+                const messageElement = document.createElement('div');
+                messageElement.className = 'message';
+                messageElement.innerHTML = `
+                    <strong>${message.user}</strong> 
+                    <small>(${new Date(message.date).toLocaleString()})</small>
+                    <p>${message.text}</p>
+                    <small>Marker: ${message.markerID}</small>
+                `;
+                messagesDiv.appendChild(messageElement);
+            });
+            
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        async function fetchMessagesAPI() {
+            try {
+                const response = await fetch('http://localhost:3004/messages');
+                if (response.ok) {
+                    const data = await response.json();
+                    displayMessages(data.messages);
+                    document.getElementById('status').textContent = 'Statut: Messages chargés via API REST';
+                } else {
+                    document.getElementById('status').textContent = 'Statut: Erreur lors du chargement des messages';
+                }
+            } catch (error) {
+                document.getElementById('status').textContent = `Statut: Erreur de connexion - ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>

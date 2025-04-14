@@ -15,6 +15,10 @@ router.get("/", (req: Request, res: Response) => {
 
 router.get("/show", verify_access_token(false), async (req: Request, res: Response) => {
     const results = await getIssues();
+    if (! results) {
+        res.sendStatus(500);
+        return;
+    }
 
     res.send({
         "connected": req.access_token_content !== undefined,

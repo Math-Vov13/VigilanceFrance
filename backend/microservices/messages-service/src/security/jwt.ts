@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction, RequestHandler } from 'express';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const ACCESSTOKEN_SECRET_KEY = process.env.ACCESSTOKEN_SECRET_KEY || 'access_token_secret_key';
 
 export interface TokenPayload {
   userId: string;
@@ -22,9 +22,15 @@ declare global {
 /**
  * Middleware pour vérifier le token JWT
  */
-
 export const verifyToken: RequestHandler = (req, res, next) => {
-  const token = req.cookies?.AuthToken;
+  let token = req.cookies?.AuthToken;
+  
+  if (!token) {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7);
+    }
+  }
 
   if (!token) {
     res.status(401).json({ message: 'Authentification requise' });
@@ -32,7 +38,7 @@ export const verifyToken: RequestHandler = (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as TokenPayload;
+    const decoded = jwt.verify(token, ACCESSTOKEN_SECRET_KEY) as TokenPayload;
     req.user = decoded;
     next();
   } catch (error) {
@@ -40,9 +46,9 @@ export const verifyToken: RequestHandler = (req, res, next) => {
   }
 };
 
-/**
- * Génère un token JWT
- */
-export function generateToken(payload: Omit<TokenPayload, 'iat' | 'exp'>): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: '24h' });
-}
+// /**
+//  * Génère un token JWT
+//  */
+// export function generateToken(payload: Omit<TokenPayload, 'iat' | 'exp'>): string {
+//   return jwt.sign(payload, ACCESSTOKEN_SECRET_KEY, { expiresIn: '24h' });
+// }

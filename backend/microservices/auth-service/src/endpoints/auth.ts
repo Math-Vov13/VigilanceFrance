@@ -18,16 +18,27 @@ async function createSession(res: Response, agent: string, userID: string, userN
         expires: new Date(Date.now() + 60 * 60 * 1000), // 1 hour
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
+        sameSite: "strict",
     });
 
     return {
         "connected": true,
         "user": userName,
-        "_rft": refreshToken
-        
+        "_rft": refreshToken,
     };
 };
+
+async function createAccessCookie(res: Response, userID: string, agent: string) {
+    const access_token = generate_AccessToken(userID, agent as string);
+
+    // Create Cookie Access Token
+    res.cookie("Atk", access_token, {
+        expires: new Date(Date.now() + 60 * 60 * 1000), // 1 hour
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+    });
+}
 
 
 router.get("/", (req: Request, res: Response) => {
@@ -36,15 +47,17 @@ router.get("/", (req: Request, res: Response) => {
 
 /**
  * Refresh token
- * @description
+ * @description Renouvelle le token d'authentification de l'utilisateur
  */
 router.post("/refresh", verify_refresh_token, async (req: Request, res: Response) => {
-
+    // Renouvelle le token d'authentification de l'utilisateur à partir du token refresh
     const agent = req.headers["user-agent"];
     if (agent === undefined) {
         res.status(400).send("User agent is undefined");
         return;
     }
+
+    // TODO: A MODIFIER !!!
 
     res.status(201).json(await createSession(res, agent as string, req.refresh_token_content as string, null, null));
 })
@@ -75,7 +88,14 @@ router.post("/register", body_schema_validation(UserRegister), async (req: Reque
     // Return Tokens
     const refresh_token = generate_RefreshToken(user.id, agent as string);
 
-    res.status(200).json(await createSession(res, agent as string, user.id, user.username, refresh_token));
+    await createAccessCookie(res, user.id, agent as string);
+    res.status(200).json({
+        "created": true,
+        "user": user.id,
+        "email": user.email,
+        "_rft": refresh_token,
+    })
+    // res.status(200).json(await createSession(res, agent as string, user.id, user.username, refresh_token));
 })
 
 /**
@@ -100,7 +120,15 @@ router.post("/login", body_schema_validation(UserLogin), async (req: Request, re
     const refresh_token = generate_RefreshToken(user.id, agent as string);
     console.log("refresh", refresh_token);
 
-    res.status(200).json(await createSession(res, agent as string, user.id, user.username, refresh_token));
+    await createAccessCookie(res, user.id, agent as string);
+    res.status(200).json({
+        "created": false,
+        "user": user.id,
+        "email": user.email,
+        "_rft": refresh_token,
+    })
+
+    // res.status(200).json(await createSession(res, agent as string, user.id, user.username, refresh_token));
 })
 
 /**
