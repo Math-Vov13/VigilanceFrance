@@ -5,7 +5,7 @@ import os from 'os';
 import cookieParser from 'cookie-parser';
 import messagesRouter from './endpoint/messages';
 import { setupSocket } from './socket';
-import "./model/mongo-connector";
+import "./dbtest/mongo-connector";
 
 const app = express();
 const PORT = process.env["PORT"] || 3004;

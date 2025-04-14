@@ -1,54 +1,27 @@
-import { Request, Response, NextFunction, RequestHandler } from 'express';
-import jwt from 'jsonwebtoken';
+import jwt, { JwtPayload } from 'jsonwebtoken';
 
-const ACCESSTOKEN_SECRET_KEY = process.env.ACCESSTOKEN_SECRET_KEY || 'access_token_secret_key';
+const SECRET_KEY = process.env.ACCESSTOKEN_SECRET_KEY || "access_token_secret_key";
 
-export interface TokenPayload {
-  userId: string;
-  username: string;
-  role?: string;
-  iat?: number;
-  exp?: number;
-}
+export function decode_AccessToken(token: string, webagent: string): string | null {
+    try {
 
-declare global {
-  namespace Express {
-    interface Request {
-      user?: TokenPayload;
+        const decryptedToken = token;
+        const decodedToken = jwt.verify(decryptedToken, SECRET_KEY) as JwtPayload;
+
+        if (decodedToken.iss !== webagent) {
+            console.error("Invalid token issuer!");
+            return null;
+        }
+
+        if (decodedToken.sub !== "auth") {
+            console.error("Invalid token subject!");
+            return null;
+        }
+
+        console.log("Decoded token:", decodedToken);
+        return decodedToken.dt;
+    } catch (err) {
+        console.error("Error decoding token:", err);
+        return null;
     }
-  }
 }
-
-/**
- * Middleware pour vérifier le token JWT
- */
-export const verifyToken: RequestHandler = (req, res, next) => {
-  let token = req.cookies?.AuthToken;
-  
-  if (!token) {
-    const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      token = authHeader.substring(7);
-    }
-  }
-
-  if (!token) {
-    res.status(401).json({ message: 'Authentification requise' });
-    return;
-  }
-
-  try {
-    const decoded = jwt.verify(token, ACCESSTOKEN_SECRET_KEY) as TokenPayload;
-    req.user = decoded;
-    next();
-  } catch (error) {
-    res.status(403).json({ message: 'Token invalide ou expiré' });
-  }
-};
-
-// /**
-//  * Génère un token JWT
-//  */
-// export function generateToken(payload: Omit<TokenPayload, 'iat' | 'exp'>): string {
-//   return jwt.sign(payload, ACCESSTOKEN_SECRET_KEY, { expiresIn: '24h' });
-// }

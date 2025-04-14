@@ -1,78 +1,118 @@
-import { Server } from "socket.io";
-import { getAllMessages } from './model/db_messages';
-import jwt from 'jsonwebtoken';
-import { TokenPayload } from './security/jwt';
+import { Server, Socket } from "socket.io";
+import { getAllMessages, getMessagesByMarkID } from './dbtest/db_messages';
+import jwt from "jsonwebtoken";
 import http from 'http';
+import { decode_AccessToken } from "./security/jwt";
+
+
+export function extractUserFromSocket(socket: Socket) {
+  const token =
+    socket.handshake.auth?.token ||
+    socket.handshake.headers?.authorization?.split(" ")[1] ||
+    socket.handshake.headers?.cookie?.split("Atk=")[1];
+
+  if (!token) return null;
+
+  try {
+    const user = decode_AccessToken(token, socket.handshake.headers["user-agent"] as string);
+    return user; 
+  } catch (err) {
+    return null;
+  }
+}
+
 
 const JWT_SECRET = process.env.ACCESSTOKEN_SECRET_KEY || 'access_token_secret_key';
+
+interface tkPL {
+  userId: string;
+  username: string;
+  role?: string;
+  iat?: number;
+  exp?: number;
+}
 
 const activeUsers = new Map<string, string>(); // userid & socketid
 
 export function setupSocket(server: http.Server) {
   const io = new Server(server, {
     cors: {
-      origin: true, 
+      origin: true,
       credentials: true
     }
   });
 
+  io.use((socket, next) => {
+    const token =
+      socket.handshake.auth?.token ||
+      socket.handshake.headers?.authorization?.split(" ")[1];
+
+    if (!token) { // obligatoire hein
+      console.log("Bah y'a pas de token :/");
+      return next(); 
+    }
+ //début
+    try {  // et pas pierre-louis
+      const PL = jwt.verify(token, JWT_SECRET) as tkPL; // en gros le payload, ressource -> https://www.npmjs.com/package/jsonwebtoken#jwtverifytoken-secretorpublickey-options-callback
+      (socket as any).user = PL;
+      next();
+    } catch (e) {
+      console.log("Token invalide :/", e);
+      return next(new Error("authentication error"));
+    }
+  });
+
   io.on("connection", (socket) => {
-    console.log(`Client connected: ${socket.id}`);
-    // Ajoute un middleware pour vérifier l'authentification avant d'écouter les événements
-    // => socket.use((packet, next) => {
-
-    // Ensuite, en fonction du MarkerID, redirige le vers une Room avec le MarkerID
-    // socket.join(MarkerID); // Remplacez MarkerID par l'ID de la room souhaitée
+    const user = (socket as any).user as tkPL | undefined;
     
-    sendAllMessages(socket);
-    //  //////////////// Pas besoin de l'évènement "authenticate" ici ////////////////////
+    console.log(`Client connected: ${socket.id}${user ? ` (user: ${user.username})` : " (unauthenticated)"}`);
 
-    // socket.on("authenticate", (token: string) => {
-    //   try {
-    //     const payload = jwt.verify(token, JWT_SECRET) as TokenPayload;
-    //     const userId = payload.userId;
+    if (user) {
+      activeUsers.set(user.userId, socket.id);
+    }
 
-    //     if (activeUsers.has(userId)) {
-    //       const previousSocketId = activeUsers.get(userId);
-    //       if (previousSocketId && previousSocketId !== socket.id) {
-    //         const oldSocket = io.sockets.sockets.get(previousSocketId);
-    //         if (oldSocket) {
-    //           oldSocket.emit("duplicate_session");
-    //           oldSocket.disconnect(true);
-    //         }
-    //       }
-    //     }
+    const markerID = socket.handshake.query.markerID as string;
+    if (markerID) {
+      socket.join(markerID);
+      console.log(`${socket.id} joined comments section (room) ${markerID}`);
+    }
 
-    //     activeUsers.set(userId, socket.id);
-    //     (socket as any).user = payload;
+    sendAllMessages(socket, markerID);  // on envoie !!:D
 
-    //     console.log("Authenticated user:", payload);
-    //     socket.emit("authentication_successful", { username: payload.username });
+    socket.on("message", (data) => {
+      if (!user) {
+        console.warn(`Non-authenticated user tried to send message: ${socket.id}`);
+        socket.emit("unauthorized, vous devez etre login pour envoyer des messages");
+        return;
+      }
 
-    //   } catch (err) {
-    //     console.error("Authentication failed:", err);
-    //     socket.emit("unauthorized");
-    //   }
-    // });
+      if (markerID) {
+        io.to(markerID).emit("message", {
+          user: user.username,
+          content: data
+        });
+      }
+    });
 
-    // ///////////////////////// Ajoute un évènement message ! Pour envoyer un message et le recevoir par tous les utilisateurs connectés dans la room du MarkerID ///////////////////
-    //socket.on("message", () => {
-
+    // j'ai repris l'original ici
     socket.on("disconnect", () => {
-      for (const [userId, socketId] of activeUsers.entries()) {
-        if (socketId === socket.id) {
-          activeUsers.delete(userId);
-          console.log(`User ${userId} disconnected and session cleared.`);
-          break;
-        }
+      if (user && activeUsers.get(user.userId) === socket.id) {
+        activeUsers.delete(user.userId);
+        console.log(`User ${user.username} disconnected and session cleared.`);
       }
     });
   });
 
-  async function sendAllMessages(socket: any) {
+  async function sendAllMessages(socket: Socket, markerID?: string) {
     try {
-      const messages = getAllMessages(); // Envoie Juste le dernier message envoyé ??? Pas besoin de tout envoyer.
-      socket.emit("all_messages", messages);
+      if (!markerID) {
+        const messages = await getAllMessages();
+        socket.emit("all_messages", messages);
+        return;
+      }
+
+      const messages = await getMessagesByMarkID(markerID);
+      socket.emit("all_messages_by_marker", messages);
     } catch (err) {
       console.error("Error fetching messages:", err);
       socket.emit("error_fetching_messages");

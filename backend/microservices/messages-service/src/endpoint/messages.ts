@@ -1,6 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { verifyToken } from '../security/jwt';
-import { getAllMessages, addMessage, getMessagesByMarkID } from '../model/db_messages';
+import { getAllMessages, addMessage, getMessagesByMarkID } from '../dbtest/db_messages';
 
 const router = Router();
 
