@@ -5,7 +5,7 @@ import morgan from 'morgan';
 import cors from 'cors';
 import os from 'os';
 import cookieParser from "cookie-parser";
-import "./models/mongo-connector";
+import "./models/mongo-connector"; // NE PAS RETIRER !
 
 // Vars
 const app = express();

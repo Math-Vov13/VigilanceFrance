@@ -58,14 +58,6 @@ export async function removeSolvedVote(user_id: string, issue_id: string): Promi
         }
     }
 
-    if (issue?.reporterID === user_id) {
-        return {
-            "success": false,
-            "message": "The owner of the Issue cannot remove his vote!",
-            "status": 409
-        }
-    }
-
     return {
         "success": true,
     }

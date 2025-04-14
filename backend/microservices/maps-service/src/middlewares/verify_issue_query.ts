@@ -1,13 +1,12 @@
 import { Request, Response, NextFunction } from "express";
-import { z } from "zod";
-import { MarkerDB } from "../schemas/marker_sc";
 import { getIssue_byId } from "../models/marker_db";
+import { IIssue } from "../schemas/mongo_issues_sc";
 
 
 declare global {
     namespace Express {
         interface Request {
-            issue_content?: z.infer<typeof MarkerDB>;
+            issue_content?: IIssue;
         }
     }
 }
@@ -25,6 +24,6 @@ export const verify_issue_id = async (req: Request, res: Response, next: NextFun
         return;
     }
     
-    req.issue_content = issue_db as z.infer<typeof MarkerDB>;
+    req.issue_content = issue_db as IIssue;
     next(); // Continue
 }

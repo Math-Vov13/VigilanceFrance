@@ -10,6 +10,7 @@ import { redisClient } from "./models/redis";
 import { router as routerIssues } from './endpoints/markers';
 import { router as routerVotes } from './endpoints/votes';
 import { router as routerSolved } from './endpoints/solved';
+import "./models/mongo-connector"; // NE PAS RETIRER !
 
 // Vars
 const app = express();
@@ -41,7 +42,7 @@ app.use(
         secret: process.env.REDIS_SESSION_SECRET || 'your-secret-key', // Replace with a secure secret
         resave: false,
         saveUninitialized: true,
-        cookie: { sameSite: "strict", httpOnly: true, secure: process.env.NODE_ENV === "production", maxAge: 2*60*1000 },
+        cookie: { sameSite: "lax", httpOnly: true, secure: process.env.NODE_ENV === "production", maxAge: 2*60*1000 }, // path: "http://localhost:5173"
     })
 );
 

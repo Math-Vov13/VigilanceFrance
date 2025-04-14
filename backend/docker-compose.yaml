@@ -56,6 +56,11 @@ services:
     
     environment:
       - REDIS_HOST=redis-cache
+      - MONGO_DB_HOST=mongodb
+      - MONGO_DB_PORT=27017
+      - MONGO_DB_USERNAME=issue_admin
+      - MONGO_DB_PSWD=issuespassword3124
+      - MONGO_DB_DATABASE=maps
     
     ports:
       - "3003:80"
