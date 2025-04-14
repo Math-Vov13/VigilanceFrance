@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Navbar } from '../components/layout/Navbar';
 import { IncidentMap } from '../components/map/IncidentMap';
 import { IncidentSidebar } from '../components/map/IncidentSidebar';
@@ -22,133 +22,82 @@ export default function MapPage() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Charger les incidents depuis l'API au chargement
-  useEffect(() => {
-    const fetchIncidents = async () => {
-      try {
-        setIsLoading(true);
-        // Utilisation directe d'axios pour déboguer la structure de la réponse
-        const response = await axios.get(`${API_GATEWAY_URL}/maps/interactions/issues/show`, {
-          withCredentials: true
-        });
-        
-        console.log("Réponse API complète:", response);
-        
-        // Vérification de la structure et extraction des données
-        let incidentData: Incident[] = [];
-        
-        if (response.data?.content && Array.isArray(response.data.content)) {
-          // Si la structure est { content: [...incidents] }
-          incidentData = response.data.content;
-        } else if (response.data?.data && Array.isArray(response.data.data)) {
-          // Si la structure est { data: [...incidents] }
-          incidentData = response.data.data;
-        } else if (response.data?.data?.content && Array.isArray(response.data.data.content)) {
-          // Si la structure est { data: { content: [...incidents] } }
-          incidentData = response.data.data.content;
-        } else if (Array.isArray(response.data)) {
-          // Si la structure est directement un tableau
-          incidentData = response.data;
-        } else {
-          console.error("Structure de données inattendue:", response.data);
-          throw new Error("Format de données inattendu");
-        }
-        
-        setIncidents(incidentData || []);
-        setError(null);
-      } catch (err) {
-        console.error('Failed to fetch incidents:', err);
-        setError('Impossible de charger les incidents. Veuillez réessayer plus tard.');
-        // Par sécurité, initialisons incidents comme un tableau vide en cas d'erreur
-        setIncidents([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchIncidents();
-  }, []);
-
-  const getActiveFilterLabel = (filterType: string) => {
-    switch (filterType) {
-      case 'accident':
-        return 'Accidents';
-      case 'inondation':
-        return 'Inondations';
-      case 'vol':
-        return 'Vols';
-      case 'agression':
-        return 'Agressions';
-      case 'incendie':
-        return 'Incendies';
-      default:
-        return 'Tous les incidents';
+  // Extraction des données d'API améliorée avec une fonction réutilisable
+  const extractIncidentData = useCallback((response: any): Incident[] => {
+    if (response?.content && Array.isArray(response.content)) {
+      return response.content;
+    } else if (response?.data && Array.isArray(response.data)) {
+      return response.data;
+    } else if (response?.data?.content && Array.isArray(response.data.content)) {
+      return response.data.content;
+    } else if (Array.isArray(response)) {
+      return response;
+    } else {
+      console.error("Structure de données inattendue:", response);
+      return [];
     }
-  };
+  }, []);
+  
+  const fetchIncidents = useCallback(async (typeFilter = '') => {
+    try {
+      setIsLoading(true);
+      
+      const url = typeFilter && typeFilter !== 'all' 
+        ? `${API_GATEWAY_URL}/maps/interactions/issues/show?type=${typeFilter}`
+        : `${API_GATEWAY_URL}/maps/interactions/issues/show`;
+      
+      const response = await axios.get(url, { withCredentials: true });
+      const incidentData = extractIncidentData(response.data);
+      
+      setIncidents(incidentData || []);
+      setError(null);
+    } catch (err) {
+      console.error('Failed to fetch incidents:', err);
+      setError('Impossible de charger les incidents. Veuillez réessayer plus tard.');
+      setIncidents([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [extractIncidentData]);
+
+  // Charger les incidents au chargement
+  useEffect(() => {
+    fetchIncidents();
+  }, [fetchIncidents]);
+  
+  // Memoized active filter label
+  const getActiveFilterLabel = useMemo(() => (filterType: string) => {
+    const filterMap: Record<string, string> = {
+      'accident': 'Accidents',
+      'inondation': 'Inondations',
+      'vol': 'Vols',
+      'agression': 'Agressions',
+      'incendie': 'Incendies',
+    };
+    
+    return filterMap[filterType] || 'Tous les incidents';
+  }, []);
   
   // Handle marker click on map
-  const handleMarkerClick = (incident: Incident) => {
+  const handleMarkerClick = useCallback((incident: Incident) => {
     setSelectedIncident(incident);
     setSidebarOpen(true);
-  };
+  }, []);
   
   // Close sidebar
-  const handleSidebarClose = () => {
+  const handleSidebarClose = useCallback(() => {
     setSidebarOpen(false);
     setSelectedIncident(null);
-  };
+  }, []);
   
   // Handle filter change
-  const handleFilterChange = (value: string) => {
+  const handleFilterChange = useCallback((value: string) => {
     setIncidentTypeFilter(value);
-    
-    
-    const fetchFilteredIncidents = async () => {
-      try {
-        setIsLoading(true);
-        const url = value !== 'all' 
-          ? `${API_GATEWAY_URL}/v1/maps/interactions/issues/show?type=${value}`
-          : `${API_GATEWAY_URL}/v1/maps/interactions/issues/show`;
-          
-        const response = await axios.get(url, { withCredentials: true });
-        
-        console.log("Réponse API complète:", response);
-        
-        // Vérification de la structure et extraction des données
-        let incidentData: Incident[] = [];
-        
-        if (response.data?.content && Array.isArray(response.data.content)) {
-          // Si la structure est { content: [...incidents] }
-          incidentData = response.data.content;
-        } else if (response.data?.data && Array.isArray(response.data.data)) {
-          // Si la structure est { data: [...incidents] }
-          incidentData = response.data.data;
-        } else if (response.data?.data?.content && Array.isArray(response.data.data.content)) {
-          // Si la structure est { data: { content: [...incidents] } }
-          incidentData = response.data.data.content;
-        } else if (Array.isArray(response.data)) {
-          // Si la structure est directement un tableau
-          incidentData = response.data;
-        } else {
-          console.error("Structure de données inattendue:", response.data);
-          throw new Error("Format de données inattendu");
-        }
-        
-        setIncidents(incidentData || []);
-        setError(null);
-      } catch (err) {
-        console.error('Failed to fetch filtered incidents:', err);
-        setError('Impossible de filtrer les incidents. Veuillez réessayer plus tard.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    fetchFilteredIncidents();
-  };
-  
+    fetchIncidents(value);
+  }, [fetchIncidents]);
+
   // Add new incident
-  const handleAddIncident = async (newIncident: Omit<Incident, 'id' | 'comments'>) => {
+  const handleAddIncident = useCallback(async (newIncident: Omit<Incident, 'id' | 'comments'>) => {
     try {
       setIsLoading(true);
       const response = await axios.post(
@@ -157,9 +106,6 @@ export default function MapPage() {
         { withCredentials: true }
       );
       
-      console.log("Réponse création d'incident:", response);
-      
-      // Extraire les données de la réponse
       let createdIncident;
       if (response.data?.issue) {
         createdIncident = response.data.issue;
@@ -169,7 +115,6 @@ export default function MapPage() {
         createdIncident = response.data;
       }
       
-      // Adapter l'objet retourné par l'API au format attendu par le composant
       const incident: Incident = {
         ...createdIncident,
         comments: createdIncident.comments || [],
@@ -186,57 +131,45 @@ export default function MapPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
   
-  // Add comment to an incident (à implémenter dans votre API backend)
-  const handleAddComment = async (incidentId: number, comment: Omit<Comment, 'id' | 'date'>) => {
-    try {
-      // Pour l'instant, nous simulons l'ajout localement
-      setIncidents(prevIncidents => 
-        prevIncidents.map(incident => {
-          if (incident.id === incidentId) {
-            const newComment: Comment = {
-              ...comment,
-              id: Math.max(...(incident.comments?.map(c => c.id) || [0]), 0) + 1,
-              date: new Date().toISOString()
-            };
-            
-            return {
-              ...incident,
-              comments: [...(incident.comments || []), newComment]
-            };
-          }
-          return incident;
-        })
-      );
-      
-      // Update the selected incident if it's the one we just added a comment to
-      if (selectedIncident && selectedIncident.id === incidentId) {
-        const updatedIncident = incidents.find(i => i.id === incidentId);
-        if (updatedIncident) {
-          setSelectedIncident(updatedIncident);
+  // Add comment to an incident
+  const handleAddComment = useCallback(async (incidentId: number, comment: Omit<Comment, 'id' | 'date'>) => {
+    setIncidents(prevIncidents => 
+      prevIncidents.map(incident => {
+        if (incident.id === incidentId) {
+          const newComment: Comment = {
+            ...comment,
+            id: Math.max(...(incident.comments?.map(c => c.id) || [0]), 0) + 1,
+            date: new Date().toISOString()
+          };
+          
+          return {
+            ...incident,
+            comments: [...(incident.comments || []), newComment]
+          };
         }
+        return incident;
+      })
+    );
+    
+    if (selectedIncident && selectedIncident.id === incidentId) {
+      const updatedIncident = incidents.find(i => i.id === incidentId);
+      if (updatedIncident) {
+        setSelectedIncident(updatedIncident);
       }
-    } catch (err) {
-      console.error('Failed to add comment:', err);
-      setError('Impossible d\'ajouter le commentaire. Veuillez réessayer plus tard.');
     }
-  };
-  
-  
+  }, [incidents, selectedIncident]);
   
   // Vote for an incident
-  const handleUpvote = async (incidentId: number) => {
+  const handleUpvote = useCallback(async (incidentId: number) => {
     try {
-      const response = await axios.post(
+      await axios.post(
         `${API_GATEWAY_URL}/maps/interactions/votes/create?issue_id=${incidentId}`,
         {},
         { withCredentials: true }
       );
       
-      console.log("Réponse vote:", response);
-      
-      // Mettre à jour l'état local pour refléter le nouveau vote
       setIncidents(prevIncidents => 
         prevIncidents.map(incident => {
           if (incident.id === incidentId) {
@@ -249,22 +182,20 @@ export default function MapPage() {
         })
       );
       
-      // Mettre à jour l'incident sélectionné si nécessaire
       if (selectedIncident && selectedIncident.id === incidentId) {
-        const updatedIncident = {
+        setSelectedIncident({
           ...selectedIncident,
           upvotes: (selectedIncident.upvotes || 0) + 1
-        };
-        setSelectedIncident(updatedIncident);
+        });
       }
     } catch (err) {
       console.error('Failed to upvote:', err);
       setError('Impossible de voter. Veuillez réessayer plus tard.');
     }
-  };
+  }, [selectedIncident]);
   
   // Mark incident as solved
-  const handleMarkAsSolved = async (incidentId: number) => {
+  const handleMarkAsSolved = useCallback(async (incidentId: number) => {
     try {
       const response = await axios.post(
         `${API_GATEWAY_URL}/maps/interactions/solved/create?issue_id=${incidentId}`,
@@ -272,41 +203,32 @@ export default function MapPage() {
         { withCredentials: true }
       );
       
-      console.log("Réponse résolution:", response);
-      
-      // Si l'incident a été marqué comme résolu par le backend
       const result = response.data;
       if (result.solved) {
-        // Mettre à jour l'état local pour marquer l'incident comme résolu
         setIncidents(prevIncidents => 
           prevIncidents.map(incident => {
             if (incident.id === incidentId) {
-              return {
-                ...incident,
-                status: 'resolved'
-              };
+              return { ...incident, status: 'resolved' };
             }
             return incident;
           })
         );
         
-        // Mettre à jour l'incident sélectionné si nécessaire
         if (selectedIncident && selectedIncident.id === incidentId) {
-          const updatedIncident = {
+          setSelectedIncident({
             ...selectedIncident,
             status: 'resolved' as Incident['status']
-          };
-          setSelectedIncident(updatedIncident);
+          });
         }
       }
     } catch (err) {
       console.error('Failed to mark as solved:', err);
       setError('Impossible de marquer comme résolu. Veuillez réessayer plus tard.');
     }
-  };
+  }, [selectedIncident]);
   
   // Like a comment
-  const handleLikeComment = (incidentId: number, commentId: number) => {
+  const handleLikeComment = useCallback((incidentId: number, commentId: number) => {
     setIncidents(prevIncidents => 
       prevIncidents.map(incident => {
         if (incident.id === incidentId) {
@@ -314,10 +236,7 @@ export default function MapPage() {
             ...incident,
             comments: (incident.comments || []).map(comment => {
               if (comment.id === commentId) {
-                return {
-                  ...comment,
-                  likes: (comment.likes || 0) + 1
-                };
+                return { ...comment, likes: (comment.likes || 0) + 1 };
               }
               return comment;
             })
@@ -326,10 +245,10 @@ export default function MapPage() {
         return incident;
       })
     );
-  };
+  }, []);
   
   // Report a comment
-  const handleReportComment = (incidentId: number, commentId: number) => {
+  const handleReportComment = useCallback((incidentId: number, commentId: number) => {
     setIncidents(prevIncidents => 
       prevIncidents.map(incident => {
         if (incident.id === incidentId) {
@@ -337,10 +256,7 @@ export default function MapPage() {
             ...incident,
             comments: (incident.comments || []).map(comment => {
               if (comment.id === commentId) {
-                return {
-                  ...comment,
-                  reported: true
-                };
+                return { ...comment, reported: true };
               }
               return comment;
             })
@@ -350,19 +266,18 @@ export default function MapPage() {
       })
     );
     
-    // In a real app, you would send this to your API
     alert('Commentaire signalé aux modérateurs. Merci de votre vigilance!');
-  };
+  }, []);
   
-  // Sécurisation du calcul des compteurs
-  // Si incidents est undefined ou null, nous utilisons un tableau vide
   const safeIncidents = incidents || [];
   
-  // Count incidents by type for the filter badges
-  const countByType = incidentTypes.map(type => ({
-    ...type,
-    count: safeIncidents.filter(incident => incident?.type === type.value).length
-  }));
+  // Memoize count by type to prevent unnecessary recalculations
+  const countByType = useMemo(() => 
+    incidentTypes.map(type => ({
+      ...type,
+      count: safeIncidents.filter(incident => incident?.type === type.value).length
+    })), 
+  [safeIncidents]);
   
   if (isLoading && (!incidents || incidents.length === 0)) {
     return (
@@ -464,7 +379,7 @@ export default function MapPage() {
         {sidebarOpen && selectedIncident && (
           <div className="absolute md:relative right-0 top-0 bottom-0 w-full md:w-96 z-20 max-h-screen overflow-hidden">
             <IncidentSidebar 
-              incident={selectedIncident} 
+              incident={selectedIncident}
               onClose={handleSidebarClose}
               onAddComment={handleAddComment}
               onLikeComment={handleLikeComment}

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
@@ -6,26 +6,45 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../ui/dialog';
 import { incidentTypes, severityLevels } from '../../constants/constants';
 import { Incident, Coordinates } from '../../types';
-import { MapPin, Calendar, AlertCircle } from 'lucide-react';
+import { MapPin, AlertCircle} from 'lucide-react';
 
 interface IncidentFormProps {
   open: boolean;
   onClose: () => void;
   onSubmit: (incident: Omit<Incident, 'id' | 'comments'>) => void;
   initialCoordinates?: Coordinates;
+  initialAddress?: string;
 }
 
-export function IncidentForm({ open, onClose, onSubmit, initialCoordinates }: IncidentFormProps) {
+export function IncidentForm({ 
+  open, 
+  onClose, 
+  onSubmit, 
+  initialCoordinates, 
+  initialAddress = '' 
+}: IncidentFormProps) {
   const [formData, setFormData] = useState<Omit<Incident, 'id' | 'comments'>>({
     type: '',
     title: '',
     description: '',
     location: '',
     coordinates: initialCoordinates || { lat: 0, lng: 0 },
-    date: new Date().toISOString().slice(0, 16),
     severity: 'moyen',
-    reportedBy: ''
   });
+
+  // Mettre à jour l'adresse quand initialAddress change
+  useEffect(() => {
+    if (initialAddress) {
+      setFormData(prev => ({ ...prev, location: initialAddress }));
+    }
+  }, [initialAddress]);
+
+  // Mettre à jour les coordonnées quand initialCoordinates change
+  useEffect(() => {
+    if (initialCoordinates) {
+      setFormData(prev => ({ ...prev, coordinates: initialCoordinates }));
+    }
+  }, [initialCoordinates]);
 
   const handleChange = (field: keyof typeof formData, value: string | Coordinates) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -86,66 +105,39 @@ export function IncidentForm({ open, onClose, onSubmit, initialCoordinates }: In
             />
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                <MapPin className="inline-block w-4 h-4 mr-1" />
-                Adresse
-              </label>
-              <Input
-                required
-                value={formData.location}
-                onChange={(e) => handleChange('location', e.target.value)}
-                placeholder="Adresse ou lieu précis"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                <Calendar className="inline-block w-4 h-4 mr-1" />
-                Date et heure
-              </label>
-              <Input
-                type="datetime-local"
-                required
-                value={formData.date}
-                onChange={(e) => handleChange('date', e.target.value)}
-              />
-            </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              <MapPin className="inline-block w-4 h-4 mr-1" />
+              Adresse
+            </label>
+            <Input
+              required
+              value={formData.location}
+              onChange={(e) => handleChange('location', e.target.value)}
+              placeholder="Adresse ou lieu précis"
+            />
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                <AlertCircle className="inline-block w-4 h-4 mr-1" />
-                Gravité
-              </label>
-              <Select 
-                value={formData.severity} 
-                onValueChange={(value) => handleChange('severity', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Niveau de gravité" />
-                </SelectTrigger>
-                <SelectContent>
-                  {severityLevels.map(level => (
-                    <SelectItem key={level.value} value={level.value}>
-                      {level.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium mb-1">Votre nom</label>
-              <Input
-                required
-                value={formData.reportedBy}
-                onChange={(e) => handleChange('reportedBy', e.target.value)}
-                placeholder="Votre nom ou pseudo"
-              />
-            </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              <AlertCircle className="inline-block w-4 h-4 mr-1" />
+              Gravité
+            </label>
+            <Select 
+              value={formData.severity} 
+              onValueChange={(value) => handleChange('severity', value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Niveau de gravité" />
+              </SelectTrigger>
+              <SelectContent>
+                {severityLevels.map(level => (
+                  <SelectItem key={level.value} value={level.value}>
+                    {level.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           
           <DialogFooter className="mt-6">

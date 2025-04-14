@@ -22,6 +22,7 @@ export function IncidentMap({
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
+    libraries: ['places'], // Ajout de la bibliothèque places pour la géocodification
   });
 
   const [map, setMap] = useState<google.maps.Map | null>(null);
@@ -29,20 +30,45 @@ export function IncidentMap({
   const [mapCenter, setMapCenter] = useState(defaultMapCenter);
   const [addingIncident, setAddingIncident] = useState(false);
   const [newIncidentCoords, setNewIncidentCoords] = useState(defaultMapCenter);
+  const [newIncidentAddress, setNewIncidentAddress] = useState('');
   
   const mapRef = useRef<google.maps.Map | null>(null);
+  const geocoderRef = useRef<google.maps.Geocoder | null>(null);
+  
+  // Initialiser le géocodeur une fois que l'API est chargée
+  useEffect(() => {
+    if (isLoaded && !geocoderRef.current) {
+      geocoderRef.current = new google.maps.Geocoder();
+    }
+  }, [isLoaded]);
   
   // Filter incidents based on selected type
   const filteredIncidents = filteredType === 'all' 
     ? incidents 
     : incidents.filter(incident => incident.type === filteredType);
   
-  const handleMapClick = (e: google.maps.MapMouseEvent) => {
-    if (e.latLng) {
-      setNewIncidentCoords({
+  const handleMapClick = async (e: google.maps.MapMouseEvent) => {
+    if (e.latLng && geocoderRef.current) {
+      const coords = {
         lat: e.latLng.lat(),
-        lng: e.latLng.lng()
-      });
+        lng: e.latLng.lng(),
+      };
+      
+      setNewIncidentCoords(coords);
+      
+      // Récupérer l'adresse à partir des coordonnées
+      try {
+        const response = await geocoderRef.current.geocode({ location: coords });
+        if (response.results && response.results[0]) {
+          setNewIncidentAddress(response.results[0].formatted_address);
+        } else {
+          setNewIncidentAddress('');
+        }
+      } catch (error) {
+        console.error("Erreur de géocodage:", error);
+        setNewIncidentAddress('');
+      }
+      
       setAddingIncident(true);
     }
   };
@@ -67,15 +93,14 @@ export function IncidentMap({
     setMap(map);
   };
   
-  // Get marker icon based on incident type
+  // Get marker icon based on incident type - Memoize this for performance
   const getMarkerIcon = (type: string) => {
     const incidentType = incidentTypes.find(t => t.value === type);
-    if (!incidentType) return defaultIcon;
     
-    return {
+    return incidentType ? {
       url: `/icons/${incidentType.icon}.svg`,
       scaledSize: new google.maps.Size(30, 30),
-    };
+    } : undefined;
   };
   
   // Update user's location if allowed
@@ -89,14 +114,13 @@ export function IncidentMap({
           });
         },
         () => {
-          // Use default if geolocation fails
           console.log('Geolocation permission denied. Using default location.');
         }
       );
     }
   }, []);
   
-  // Reset map when filter changes
+  // Reset map when filter changes - Optimisé pour ne pas recalculer à chaque rendu
   useEffect(() => {
     if (map && filteredIncidents.length > 0) {
       const bounds = new google.maps.LatLngBounds();
@@ -104,7 +128,7 @@ export function IncidentMap({
       filteredIncidents.forEach(incident => {
         bounds.extend(new google.maps.LatLng(
           incident.coordinates.lat,
-          incident.coordinates.lng
+          incident.coordinates.lng,
         ));
       });
       
@@ -113,7 +137,7 @@ export function IncidentMap({
         map.fitBounds(bounds);
       }
     }
-  }, [filteredType, map, filteredIncidents]);
+  }, [filteredType, map, filteredIncidents.length]);
   
   if (!isLoaded) {
     return (
@@ -151,7 +175,7 @@ export function IncidentMap({
             key={incident.id}
             position={{ 
               lat: incident.coordinates.lat, 
-              lng: incident.coordinates.lng 
+              lng: incident.coordinates.lng, 
             }}
             onClick={() => handleMarkerClick(incident)}
             icon={getMarkerIcon(incident.type)}
@@ -175,17 +199,7 @@ export function IncidentMap({
         )}
       </GoogleMap>
       
-      {/* Add Incident Button */}
-      {onAddIncident && (
-        <Button
-          className="absolute bottom-4 right-4 rounded-full shadow-lg bg-blue-600 hover:bg-blue-700"
-          size="lg"
-          onClick={() => setAddingIncident(true)}
-        >
-          <Plus className="mr-2 h-5 w-5" />
-          Signaler
-        </Button>
-      )}
+      {/* Add Incident Button - Retirée car nous utilisons le clic sur la carte à la place */}
       
       {/* Incident Form Dialog */}
       {addingIncident && (
@@ -194,6 +208,7 @@ export function IncidentMap({
           onClose={() => setAddingIncident(false)}
           onSubmit={handleAddIncident}
           initialCoordinates={newIncidentCoords}
+          initialAddress={newIncidentAddress}
         />
       )}
     </div>

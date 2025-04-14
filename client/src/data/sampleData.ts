@@ -9,9 +9,7 @@ export const sampleIncidents: Incident[] = [
     description: 'Collision entre deux véhicules sur l\'autoroute A1. Un camion et une voiture sont impliqués. Les secours sont sur place et la circulation est ralentie sur 2km.',
     location: 'Autoroute A1, Paris Nord',
     coordinates: { lat: 48.856614, lng: 2.3522219 }, // Paris coordinates
-    date: '2025-04-05T14:30:00',
     severity: 'moyen',
-    reportedBy: 'Jean D.',
     status: 'active',
     upvotes: 12,
     downvotes: 2,
@@ -31,12 +29,8 @@ export const sampleIncidents: Incident[] = [
     description: 'Suite aux fortes pluies, la rue principale est inondée sur 200m. L\'eau atteint 30cm par endroits et plusieurs commerces sont touchés. La mairie a mis en place des passerelles temporaires.',
     location: 'Rue de la République, Lyon 69002',
     coordinates: { lat: 45.764043, lng: 4.835659 }, // Lyon coordinates
-    date: '2025-04-06T08:15:00',
-    severity: 'majeur',
-    reportedBy: 'Sophie M.',
+    severity: 'moyen',
     status: 'verified',
-    verifiedBy: 'Mairie de Lyon',
-    verifiedDate: '2025-04-06T10:30:00',
     upvotes: 28,
     downvotes: 0,
     comments: [
@@ -55,9 +49,7 @@ export const sampleIncidents: Incident[] = [
     description: 'Téléphone portable volé sur la place du marché. Le suspect est un homme d\'environ 25 ans, vêtu d\'un sweat à capuche noir. Il s\'est enfui en direction du Vieux-Port.',
     location: 'Place du marché, Marseille 13001',
     coordinates: { lat: 43.296482, lng: 5.369780 }, // Marseille coordinates
-    date: '2025-04-05T18:45:00',
-    severity: 'mineur',
-    reportedBy: 'Antoine R.',
+    severity: 'faible',
     status: 'unverified',
     upvotes: 5,
     downvotes: 1,
@@ -70,12 +62,8 @@ export const sampleIncidents: Incident[] = [
     description: 'Une personne a été agressée à la station République. La police est intervenue rapidement et a interpellé l\'agresseur. La victime a été prise en charge par les secours.',
     location: 'Station République, Paris 75011',
     coordinates: { lat: 48.867748, lng: 2.362087 }, // Paris République coordinates
-    date: '2025-04-04T22:15:00',
     severity: 'moyen',
-    reportedBy: 'Sarah L.',
     status: 'resolved',
-    verifiedBy: 'Police Nationale',
-    verifiedDate: '2025-04-04T23:40:00',
     upvotes: 32,
     downvotes: 3,
     comments: [
@@ -89,10 +77,8 @@ export const sampleIncidents: Incident[] = [
     title: 'Incendie dans un immeuble',
     description: 'Un incendie s\'est déclaré au 3ème étage d\'un immeuble résidentiel. Les pompiers sont sur place avec 5 camions et ont évacué tout l\'immeuble. Des rues adjacentes sont bloquées.',
     location: 'Rue Sainte-Catherine, Bordeaux 33000',
-    coordinates: { lat: 44.837789, lng: -0.579180 }, // Bordeaux coordinates
-    date: '2025-04-03T14:20:00',
-    severity: 'majeur',
-    reportedBy: 'Michel D.',
+    coordinates: { lat: 44.837789, lng: -0.579180 },
+    severity: 'élevé',
     status: 'active',
     upvotes: 45,
     downvotes: 0,
@@ -113,12 +99,8 @@ export const sampleIncidents: Incident[] = [
     description: 'Manifestation importante prévue aujourd\'hui. Le cortège partira de la place de la République à 14h et se dirigera vers l\'Hôtel de Ville. Plusieurs rues seront bloquées.',
     location: 'Place de la République, Paris 75003',
     coordinates: { lat: 48.867748, lng: 2.362087 }, // Paris République coordinates
-    date: '2025-04-10T14:00:00',
     severity: 'moyen',
-    reportedBy: 'Collectif Citoyen',
     status: 'verified',
-    verifiedBy: 'Préfecture de Police',
-    verifiedDate: '2025-04-09T16:20:00',
     upvotes: 87,
     downvotes: 12,
     comments: [
@@ -132,12 +114,8 @@ export const sampleIncidents: Incident[] = [
     description: 'Coupure d\'électricité dans tout le quartier suite à un incident sur une ligne haute tension. Les techniciens sont sur place pour rétablir le courant.',
     location: 'Quartier Saint-Michel, Toulouse 31000',
     coordinates: { lat: 43.601373, lng: 1.442796 }, // Toulouse coordinates
-    date: '2025-04-07T19:45:00',
     severity: 'moyen',
-    reportedBy: 'Rémi V.',
     status: 'resolved',
-    verifiedBy: 'Enedis',
-    verifiedDate: '2025-04-07T20:15:00',
     upvotes: 19,
     downvotes: 0,
     comments: [
@@ -152,9 +130,7 @@ export const sampleIncidents: Incident[] = [
     description: 'Collision entre deux véhicules sur l\'autoroute A1. Un camion et une voiture sont impliqués. Les secours sont sur place et la circulation est ralentie sur 2km.',
     location: 'Autoroute A1, Paris Nord',
     coordinates: { lat: 48.856614, lng: 2.3522219 }, // Paris coordinates
-    date: '2025-04-05T14:30:00',
     severity: 'moyen',
-    reportedBy: 'Jean D.',
     status: 'active',
     upvotes: 12,
     downvotes: 2,

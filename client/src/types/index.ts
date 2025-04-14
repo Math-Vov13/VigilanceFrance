@@ -44,12 +44,9 @@ export interface Incident {
   title: string;             
   description: string;        
   location: string;           
-  coordinates: Coordinates;   
-  date: string;              
+  coordinates: Coordinates;                
   status?: 'active' | 'verified' | 'resolved' | 'unverified';
-  severity: 'faible' | 'moyen' | 'élevé' | 'critique';
-  reportedBy: string;         
-  verifiedBy?: string;        
+  severity: 'faible' | 'moyen' | 'élevé' | 'critique';                
   upvotes?: number;           
   downvotes?: number;         
   comments: Comment[];        

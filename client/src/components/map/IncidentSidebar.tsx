@@ -161,18 +161,6 @@ export function IncidentSidebar({
               <Clock className="h-4 w-4 mr-2" />
               <span>{formatDate(incident.date)}</span>
             </div>
-            
-            <div className="flex items-center">
-              <User className="h-4 w-4 mr-2" />
-              <span>Signalé par {incident.reportedBy}</span>
-            </div>
-            
-            {incident.verifiedBy && (
-              <div className="flex items-center">
-                <AlertTriangle className="h-4 w-4 mr-2" />
-                <span>Vérifié par {incident.verifiedBy}</span>
-              </div>
-            )}
           </div>
           
           {/* Images if available */}
