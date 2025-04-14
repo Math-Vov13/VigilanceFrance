@@ -6,7 +6,7 @@ import { IIssue, IssuesModel } from "../schemas/mongo_issues_sc";
 const fake_db: z.infer<typeof voteDB>[] = [];
 
 
-export async function getVote_byUser(user_id: string, issue_id: string): Promise<any> {
+export async function getVote_byUser(user_id: string, issue_id: string): Promise<any | null> {
     try {
         const issue = await IssuesModel.findById(issue_id);
         if (!issue) return null;

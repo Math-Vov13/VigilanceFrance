@@ -1,7 +1,7 @@
 import { Request, Response, Router } from "express";
 import { verify_access_token } from "../middlewares/verify_aToken";
 import { verify_issue_id } from "../middlewares/verify_issue_query";
-import { createVote, getVote_byUser, getVotes_byIssueId, removeVote } from "../models/votes_db";
+import { createVote, getVotes_byIssueId, removeVote } from "../models/votes_db";
 
 export const router = Router();
 
