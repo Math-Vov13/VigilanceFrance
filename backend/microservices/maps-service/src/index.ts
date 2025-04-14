@@ -2,6 +2,8 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
 import os from 'os';
+import { router } from './endpoints/markers';
+import cookieParser from "cookie-parser";
 
 // Vars
 const app = express();
@@ -12,8 +14,18 @@ app.use(cors({
     "origin": "*"
 }));
 app.use(morgan("dev"));
+app.use(cookieParser());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// Endpoint
+
+app.set('trust proxy', true);
+
+
+// Endpoints
+app.use("/markers", router);
+
+
 app.get('/', (req: Request, res: Response) => {
     res.send("Hello from Service: 'Maps'");
     return;

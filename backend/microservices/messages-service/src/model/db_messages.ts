@@ -38,9 +38,11 @@ export function getMessagesByMarkID(markerID: string): { length: number, message
   };
 }
 
+
 export function addMessage(message: Omit<Message, 'id'>): Message {
   const newId = messagesDB.length > 0 ? Math.max(...messagesDB.map(m => m.id)) + 1 : 1;
   const newMessage: Message = { ...message, id: newId };
   messagesDB.push(newMessage);
-  return newMessage; 
+
+  return newMessage;
 }
