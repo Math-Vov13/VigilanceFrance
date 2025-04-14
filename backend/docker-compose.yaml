@@ -6,14 +6,20 @@ services:
       args:
         - SERVER_PORT=80
 
+    environment:
+      - REDIS_HOST=redis-cache
+
     ports:
       - "3000:80"
+
+    networks:
+      - custom-networks
     
     depends_on:
-      - auth-service
-      - maps-service
-      - mess-service
-      - notifs-service
+      redis-cache:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
   
   auth-service:
     build:
@@ -22,8 +28,24 @@ services:
       args:
         - SERVER_PORT=80
     
+    environment:
+      - REDIS_HOST=redis-cache
+      - MONGO_DB_HOST=mongodb
+      - MONGO_DB_PORT=27017
+      - MONGO_DB_USERNAME=admin
+      - MONGO_DB_PSWD=adminpassword
+      - MONGO_DB_DATABASE=accounts
+    
     ports:
       - "3001:80"
+    
+    networks:
+      - custom-networks
+    
+    depends_on:
+      - redis-cache
+      - mongodb
+      - api-gateway
   
   maps-service:
     build:
@@ -32,8 +54,24 @@ services:
       args:
         - SERVER_PORT=80
     
+    environment:
+      - REDIS_HOST=redis-cache
+      - MONGO_DB_HOST=mongodb
+      - MONGO_DB_PORT=27017
+      - MONGO_DB_USERNAME=issue_admin
+      - MONGO_DB_PSWD=issuespassword3124
+      - MONGO_DB_DATABASE=maps
+    
     ports:
       - "3003:80"
+    
+    networks:
+      - custom-networks
+    
+    depends_on:
+      - redis-cache
+      - mongodb
+      - api-gateway
 
   mess-service:
     build:
@@ -42,8 +80,19 @@ services:
       args:
         - SERVER_PORT=80
     
+    environment:
+      - REDIS_HOST=redis-cache
+    
     ports:
       - "3004:80"
+    
+    networks:
+      - custom-networks
+    
+    depends_on:
+      - redis-cache
+      - mongodb
+      - api-gateway
   
   notifs-service:
     build:
@@ -52,5 +101,70 @@ services:
       args:
         - SERVER_PORT=80
     
+    environment:
+      - REDIS_HOST=redis-cache
+    
     ports:
       - "3005:80"
+    
+    networks:
+      - custom-networks
+
+    depends_on:
+      - redis-cache
+      - api-gateway
+  
+  redis-cache:
+    image: redis:6.2.6-alpine
+    restart: always
+    command: redis-server --requirepass mypassword --loglevel warning --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "mypassword", "ping"]
+      interval: 30s
+      timeout: 7s
+      retries: 3
+    
+    ports:
+      - "6379:6379"
+    
+    volumes:
+      - redis-cache:/data
+
+    networks:
+      - custom-networks
+  
+  mongodb:
+    image: mongo:latest
+    restart: always
+    command: [--auth]
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+      MONGO_INITDB_DATABASE: mydatabase
+
+    healthcheck:
+      test: echo 'db.runCommand({serverStatus:1}).ok' | mongosh admin -u $$MONGO_INITDB_ROOT_USERNAME -p $$MONGO_INITDB_ROOT_PASSWORD --quiet | grep 1
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+    ports:
+      - "27017:27017"
+    
+    volumes:
+      - mongo-data:/data/db
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    
+    networks:
+      - custom-networks
+
+
+networks:
+  custom-networks:
+    driver: bridge
+
+volumes:
+  redis-cache:
+    driver: local
+  mongo-data:
+    driver: local

@@ -1,8 +1,11 @@
 import express, { Request, Response } from 'express';
-import { router as AuthRouter } from './endpoints/users';
+import { router as AuthRouter } from './endpoints/auth';
+import { router as UserRouter } from './endpoints/users';
 import morgan from 'morgan';
 import cors from 'cors';
 import os from 'os';
+import cookieParser from "cookie-parser";
+import "./models/mongo-connector"; // NE PAS RETIRER !
 
 // Vars
 const app = express();
@@ -11,12 +14,22 @@ const PORT = process.env["PORT"] || 3001;
 // Middlewares
 app.use(morgan("dev"));
 app.use(cors({
-    "origin": "*",
-    "credentials": true
-}))
+    "origin": "http://localhost:5173",
+    "credentials": true,
+    "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    "allowedHeaders": ["Content-Type", "Authorization"],
+    "exposedHeaders": ["Content-Type", "Authorization"]
+}));
+app.use(cookieParser());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+
+app.set('trust proxy', true);
 
 // Routes
-app.use("/account", AuthRouter);
+app.use("/auth", AuthRouter);
+app.use("/account", UserRouter);
 
 // Endpoint
 app.get('/', (req: Request, res: Response) => {
@@ -53,11 +66,11 @@ app.get("/health", (req: Request, res: Response) => {
 // Server Listen
 const server = app.listen(PORT, (err) => {
     if (err !== undefined) {
-        console.error("[server]: Error while running server:", err);
+        console.error(`[${process.env.TAG || 'server'}]: Error while running server:`, err);
         return;
     }
 
-    console.log(`[server]: Running Server on http://localhost:${PORT}`);
+    console.log(`[${process.env.TAG || 'server'}]: Running Server on http://localhost:${PORT}`);
 });
 
 // Close Server with Event
@@ -65,5 +78,6 @@ process.on("SIGTERM", () => {
     console.debug('SIGTERM signal received: closing HTTP server');
     server.close(() => {
         console.debug('HTTP server closed!');
+        console.log(`[${process.env.TAG || 'server'}]: Server closed!`);
     })
 })
