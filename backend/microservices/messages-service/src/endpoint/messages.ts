@@ -7,21 +7,23 @@ const router = Router();
 /**
  * GET /messages
  * Récupère tous les messages ou filtre par coordonnées
- * Accessible sans authentification
  */
-router.get('/', (req: Request, res: Response) => {
+router.get('/', verifyToken, (req: Request, res: Response) => {
   try {
     const { markerID } = req.query;
 
     if (markerID) {
-      const messages = getMessagesByMarkID(markerID as string);
-      res.status(200).json(messages);
-      return;
+      
+        const messages = getAllMessages();
+    
+        res.status(200).json(messages);
+        return;
     }
 
-    const messages = getAllMessages();
+    const messages = getMessagesByMarkID(markerID as string);
     res.status(200).json(messages);
     return;
+
 
   } catch (error) {
     console.error('Erreur lors de la récupération des messages:', error);
@@ -32,7 +34,7 @@ router.get('/', (req: Request, res: Response) => {
 
 /**
  * POST /messages
- * Ajoute un nouveau message (nécessite authentification)
+ * Ajoute un nouveau message (TEST ONLY)
  */
 router.post('/', verifyToken, (req: Request, res: Response) => {
   try {
@@ -43,7 +45,7 @@ router.post('/', verifyToken, (req: Request, res: Response) => {
       return;
     }
 
-    const user = req.user?.username;
+    const user = req.user?.username; // user ou username ça dépend de la forme de la requête
 
     if (!user) {
       res.status(401).json({ message: 'Utilisateur non authentifié' });
