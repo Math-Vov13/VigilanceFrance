@@ -1,12 +1,11 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
-import http from 'http';
 import os from 'os';
 import cookieParser from 'cookie-parser';
 import messagesRouter from './endpoint/messages';
-// import { setupWebSocket } from './ws';
 import { setupSocket } from './socket';
+import "./model/mongo-connector";
 
 const app = express();
 const PORT = process.env["PORT"] || 3004;
@@ -52,7 +51,7 @@ app.get("/health", (req: Request, res: Response) => {
 });
 
 const server = app.listen(PORT, () => {
-    console.log(`[server]: Running Server on http://localhost:${PORT}`);
+    console.log(`[${process.env.TAG}]: Running Server on http://localhost:${PORT}`);
 });
 
 setupSocket(server);
@@ -62,5 +61,6 @@ process.on("SIGTERM", () => {
     console.debug('SIGTERM signal received: closing HTTP server');
     server.close(() => {
         console.debug('HTTP server closed!');
-    });
-});
+        console.log(`[${process.env.TAG || 'server'}]: Server closed!`);
+    })
+})

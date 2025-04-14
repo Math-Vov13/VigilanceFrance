@@ -10,7 +10,7 @@ export interface IIssue extends Document {
     location: string;
     coordinates: {
         lat: number;
-        lon: number;
+        lng: number;
     };
     votes: {
         user_id: string;
@@ -53,7 +53,7 @@ const issueSchema = new Schema({
     location: { type: String, required: true },
     coordinates: {
         lat: { type: Number, required: true },
-        lon: { type: Number, required: true },
+        lng: { type: Number, required: true },
     },
 
     votes: [voteSchema],

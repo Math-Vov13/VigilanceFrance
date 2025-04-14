@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction, RequestHandler } from 'express';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'scecretcte_ckeyekeykeykey';
+const ACCESSTOKEN_SECRET_KEY = process.env.ACCESSTOKEN_SECRET_KEY || 'access_token_secret_key';
 
 export interface TokenPayload {
   userId: string;
@@ -38,7 +38,7 @@ export const verifyToken: RequestHandler = (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as TokenPayload;
+    const decoded = jwt.verify(token, ACCESSTOKEN_SECRET_KEY) as TokenPayload;
     req.user = decoded;
     next();
   } catch (error) {
@@ -46,9 +46,9 @@ export const verifyToken: RequestHandler = (req, res, next) => {
   }
 };
 
-/**
- * Génère un token JWT
- */
-export function generateToken(payload: Omit<TokenPayload, 'iat' | 'exp'>): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: '24h' });
-}
+// /**
+//  * Génère un token JWT
+//  */
+// export function generateToken(payload: Omit<TokenPayload, 'iat' | 'exp'>): string {
+//   return jwt.sign(payload, ACCESSTOKEN_SECRET_KEY, { expiresIn: '24h' });
+// }

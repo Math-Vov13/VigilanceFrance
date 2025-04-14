@@ -11,6 +11,7 @@ ARG GROUP_ID=433
 ENV CONT_IMG_VER=${CONT_IMG_VER}
 ENV PORT=${SERVER_PORT}
 ENV NODE_ENV=dev
+ENV TAG="Messages Service"
 
 # Build env
 COPY . ./app
