@@ -1,5 +1,5 @@
 import { Server, Socket } from "socket.io";
-import { getAllMessages, getMessagesByMarkID } from './dbtest/db_messages';
+import { getAllMessages, getMessagesByMarkID } from './dbtest/db_messages'; //  get ALL Messages: optionnel (ligne  115)
 import jwt from "jsonwebtoken";
 import http from 'http';
 import { decode_AccessToken } from "./security/jwt";
@@ -24,7 +24,7 @@ export function extractUserFromSocket(socket: Socket) {
 
 const JWT_SECRET = process.env.ACCESSTOKEN_SECRET_KEY || 'access_token_secret_key';
 
-interface tkPL {
+interface tkPL { //token PayLoad
   userId: string;
   username: string;
   role?: string;
@@ -42,18 +42,20 @@ export function setupSocket(server: http.Server) {
     }
   });
 
+
+// Middleware
   io.use((socket, next) => {
     const token =
       socket.handshake.auth?.token ||
       socket.handshake.headers?.authorization?.split(" ")[1];
 
-    if (!token) { // obligatoire hein
+    if (!token) { // Le Token est  obligatoire.
       console.log("Bah y'a pas de token :/");
-      return next(); 
+      return next(new Error("No Token")); 
     }
- //début
-    try {  // et pas pierre-louis
-      const PL = jwt.verify(token, JWT_SECRET) as tkPL; // en gros le payload, ressource -> https://www.npmjs.com/package/jsonwebtoken#jwtverifytoken-secretorpublickey-options-callback
+
+    try {
+      const PL = jwt.verify(token, JWT_SECRET) as tkPL; // Verification du Payload (PL) / ressource -> https://www.npmjs.com/package/jsonwebtoken#jwtverifytoken-secretorpublickey-options-callback
       (socket as any).user = PL;
       next();
     } catch (e) {
@@ -75,14 +77,17 @@ export function setupSocket(server: http.Server) {
     if (markerID) {
       socket.join(markerID);
       console.log(`${socket.id} joined comments section (room) ${markerID}`);
+    } else if (!markerID) { 
+      console.log("Erreur MarkerID");
+      return new Error("MarkerID NotFound"); 
     }
 
-    sendAllMessages(socket, markerID);  // on envoie !!:D
+    sendAllMessages(socket, markerID);
 
     socket.on("message", (data) => {
       if (!user) {
         console.warn(`Non-authenticated user tried to send message: ${socket.id}`);
-        socket.emit("unauthorized, vous devez etre login pour envoyer des messages");
+        socket.emit("error_no_auth");
         return;
       }
 
@@ -94,7 +99,6 @@ export function setupSocket(server: http.Server) {
       }
     });
 
-    // j'ai repris l'original ici
     socket.on("disconnect", () => {
       if (user && activeUsers.get(user.userId) === socket.id) {
         activeUsers.delete(user.userId);
@@ -104,14 +108,17 @@ export function setupSocket(server: http.Server) {
   });
 
   async function sendAllMessages(socket: Socket, markerID?: string) {
+
     try {
+      /* Optionnel - Logique Test pour retourner getAllMessages() si le MarkerID n'est pas présent.
       if (!markerID) {
         const messages = await getAllMessages();
         socket.emit("all_messages", messages);
         return;
       }
+      */
 
-      const messages = await getMessagesByMarkID(markerID);
+      const messages = await getMessagesByMarkID(markerID as string);
       socket.emit("all_messages_by_marker", messages);
     } catch (err) {
       console.error("Error fetching messages:", err);
