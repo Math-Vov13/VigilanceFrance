@@ -116,7 +116,7 @@ export async function removeSolvedVote(user_id: string, issue_id: string): Promi
         }
 
         // Delete Vote
-        issue.votes = issue.votes.filter(vote => vote.user_id !== user_id);
+        issue.solved = issue.solved.filter(vote => vote.user_id !== user_id);
         await issue.save();
         return {
             success: true,

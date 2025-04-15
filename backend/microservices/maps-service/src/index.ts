@@ -17,6 +17,22 @@ const app = express();
 const PORT = process.env["PORT"] || 3003;
 
 
+declare module "express-session" {
+    interface SessionData {
+        connected: boolean;
+        user_id: string;
+        firstName: string;
+        lastName: string;
+
+        last_pos_updated: string;
+
+        last_lat: number;
+        last_lng: number;
+    }
+}
+
+
+
 // Proxy
 app.set("trust proxy", process.env.NODE_ENV === "production"? (process.env.PROXY_IP || false): true);  // API Gateway ==> Trusted Proxy
 

@@ -20,6 +20,8 @@ declare module "express-session" {
     interface SessionData {
         connected: boolean;
         user_id: string;
+        firstName: string;
+        lastName: string;
 
         last_pos_updated: string;
 

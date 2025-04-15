@@ -34,7 +34,7 @@ services:
       - MONGO_DB_PORT=27017
       - MONGO_DB_USERNAME=admin
       - MONGO_DB_PSWD=adminpassword
-      - MONGO_DB_DATABASE=accounts
+      - MONGO_DB_DATABASE=vigi_france_DB
     
     # ports:
     #   - "3001:80"
@@ -60,7 +60,7 @@ services:
       - MONGO_DB_PORT=27017
       - MONGO_DB_USERNAME=issue_admin
       - MONGO_DB_PSWD=issuespassword3124
-      - MONGO_DB_DATABASE=maps
+      - MONGO_DB_DATABASE=vigi_france_DB
     
     # ports:
     #   - "3003:80"
@@ -86,7 +86,7 @@ services:
       - MONGO_DB_PORT=27017
       - MONGO_DB_USERNAME=mess_admin
       - MONGO_DB_PSWD=Messgspassword3124
-      - MONGO_DB_DATABASE=maps
+      - MONGO_DB_DATABASE=vigi_france_DB
     
     # ports:
     #   - "3004:80"

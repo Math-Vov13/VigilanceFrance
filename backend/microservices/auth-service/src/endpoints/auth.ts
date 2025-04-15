@@ -1,6 +1,5 @@
 import { Request, Response, Router } from "express";
 import { generate_AccessToken } from "../security/access_token";
-import { generate_RefreshToken } from "../security/refresh_token";
 import { verify_access_token } from "../middlewares/verify_aToken";
 import { verify_refresh_token } from "../middlewares/verify_rToken";
 import { createUser, getUser, getUserById } from "../models/users_db";
@@ -51,12 +50,13 @@ router.post("/refresh", verify_refresh_token, async (req: Request, res: Response
         return;
     }
 
+    req.session.resetMaxAge();
+
     const access_token = createAccessCookie(res, user.id, agent as string);
     res.status(200).json({
         "created": false,
         "user": user.id,
-        "email": user.email,
-        "_rft": null,
+        "email": user.email
     })
 
     // res.status(200).json(await createSession(res, agent as string, req.refresh_token_content as string, null, null));
@@ -86,10 +86,13 @@ router.post("/register", body_schema_validation(UserRegister), async (req: Reque
     }
 
     req.session.connected = true;
-    req.session.save((err) => {});
+    req.session.lastName = user.lastName;
+    req.session.firstName = user.firstName;
+    req.session.save((err) => {
+        req.session.resetMaxAge();
+    });
 
     // Return Tokens
-    //const refresh_token = generate_RefreshToken(user.id, agent as string);
     const access_token = createAccessCookie(res, user.id, agent as string);
     const refresh_token = await cacheToken(user.id, access_token);
 
@@ -121,13 +124,16 @@ router.post("/login", body_schema_validation(UserLogin), async (req: Request, re
     };
 
     req.session.connected = true;
-    req.session.save((err) => {});
+    req.session.lastName = user.lastName;
+    req.session.firstName = user.firstName;
+    req.session.save((err) => {
+        req.session.resetMaxAge();
+    });
 
     // Return Tokens
-    const refresh_token = generate_RefreshToken(user.id, agent as string);
-    console.log("refresh", refresh_token);
+    const access_token = createAccessCookie(res, user.id, agent as string);
+    const refresh_token = await cacheToken(user.id, access_token);
 
-    createAccessCookie(res, user.id, agent as string);
     res.status(200).json({
         "created": false,
         "user": user.id,
