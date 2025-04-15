@@ -6,7 +6,7 @@ import cookieParser from "cookie-parser";
 import session from "express-session";
 import connectRedis from "connect-redis";
 
-import { redisClient } from "./models/redis";
+import { redisClient } from "./models/redis-connector";
 import { router as routerIssues } from './endpoints/markers';
 import { router as routerVotes } from './endpoints/votes';
 import { router as routerSolved } from './endpoints/solved';
@@ -41,8 +41,8 @@ app.use(
         }),
         secret: process.env.REDIS_SESSION_SECRET || 'your-secret-key', // Replace with a secure secret
         resave: false,
-        saveUninitialized: true,
-        cookie: { sameSite: "lax", httpOnly: true, secure: process.env.NODE_ENV === "production", maxAge: 2*60*1000 }, // path: "http://localhost:5173"
+        saveUninitialized: false,
+        cookie: { sameSite: "lax", httpOnly: true, secure: process.env.NODE_ENV === "production" },
     })
 );
 

@@ -1,12 +1,13 @@
 import { Request, Response, NextFunction } from "express";
 import { decode_RefreshToken } from "../security/refresh_token";
+import { cache_content, getTokenfromCache } from "../models/refresh_cache";
 
 
 declare global {
     namespace Express {
         interface Request {
             refresh_token?: string;
-            refresh_token_content?: string;
+            refresh_token_content?: cache_content;
         }
     }
 }
@@ -25,9 +26,11 @@ export const verify_refresh_token = async (req: Request, res: Response, next: Ne
     }
 
     // Decode the token
-    const decodedToken = decode_RefreshToken(token.split(" ")[1], req.headers["user-agent"] as string);
+    console.log("token:", token.split(" ")[1])
+    const decodedToken = await getTokenfromCache(token.split(" ")[1]);
+    // const decodedToken = decode_RefreshToken(token.split(" ")[1], req.headers["user-agent"] as string);
     if (! decodedToken) {
-        res.status(401).send("Invalid refresh token");
+        res.status(401).send("Invalid refresh token or expired");
         return;
     }
     

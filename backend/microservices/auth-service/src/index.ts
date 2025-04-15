@@ -5,11 +5,33 @@ import morgan from 'morgan';
 import cors from 'cors';
 import os from 'os';
 import cookieParser from "cookie-parser";
+import session from "express-session";
+import connectRedis from "connect-redis";
 import "./models/mongo-connector"; // NE PAS RETIRER !
+import "./models/redis-connector"; // NE PAS RETIRER !
+import { redisClient } from './models/redis-connector';
 
 // Vars
 const app = express();
 const PORT = process.env["PORT"] || 3001;
+
+
+declare module "express-session" {
+    interface SessionData {
+        connected: boolean;
+        user_id: string;
+
+        last_pos_updated: string;
+
+        last_lat: number;
+        last_lng: number;
+    }
+}
+
+
+// Proxy
+//app.set("trust proxy", process.env.NODE_ENV === "production"? (process.env.PROXY_IP || false): true);  // API Gateway ==> Trusted Proxy
+
 
 // Middlewares
 app.use(morgan("dev"));
@@ -23,6 +45,18 @@ app.use(cors({
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(
+    session({
+        name: "SID",
+        store: new connectRedis.RedisStore({
+           client: redisClient
+        }),
+        secret: process.env.REDIS_SESSION_SECRET || 'your-secret-key', // Replace with a secure secret
+        resave: false,
+        saveUninitialized: false,
+        cookie: { sameSite: "lax", httpOnly: true, secure: process.env.NODE_ENV === "production" },
+    })
+);
 
 
 app.set('trust proxy', true);

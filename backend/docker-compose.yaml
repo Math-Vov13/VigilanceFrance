@@ -36,8 +36,8 @@ services:
       - MONGO_DB_PSWD=adminpassword
       - MONGO_DB_DATABASE=accounts
     
-    ports:
-      - "3001:80"
+    # ports:
+    #   - "3001:80"
     
     networks:
       - custom-networks
@@ -62,8 +62,8 @@ services:
       - MONGO_DB_PSWD=issuespassword3124
       - MONGO_DB_DATABASE=maps
     
-    ports:
-      - "3003:80"
+    # ports:
+    #   - "3003:80"
     
     networks:
       - custom-networks
@@ -88,8 +88,8 @@ services:
       - MONGO_DB_PSWD=Messgspassword3124
       - MONGO_DB_DATABASE=maps
     
-    ports:
-      - "3004:80"
+    # ports:
+    #   - "3004:80"
     
     networks:
       - custom-networks
@@ -109,8 +109,8 @@ services:
     environment:
       - REDIS_HOST=redis-cache
     
-    ports:
-      - "3005:80"
+    # ports:
+    #   - "3005:80"
     
     networks:
       - custom-networks
@@ -162,6 +162,20 @@ services:
     
     networks:
       - custom-networks
+  
+  # nginx:
+  #   image: nginx:latest
+  #   ports:
+  #     - "8080:80"
+
+  #   volumes:
+  #     - ./nginx.conf:/etc/nginx/nginx.conf:ro
+
+  #   depends_on:
+  #     - api-gateway
+
+  #   networks:
+  #     - custom-networks
 
 
 networks:
