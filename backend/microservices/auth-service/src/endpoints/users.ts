@@ -15,22 +15,10 @@ router.get("/", (req: Request, res: Response) => {
  */
 router.get("/profile", verify_access_token, async (req: Request, res: Response) => {
     const user = await getUserById(req.access_token_content as string);
-    if (!user) {
+    if (! user) {
         res.status(404).send("User not found");
         return;
     }
 
-    res.set('Cache-Control', 'no-store');
-
-    // Format the response to match what the frontend expects
-    res.status(200).json({
-        success: true,
-        message: "Profile retrieved successfully",
-        data: {
-            id: user.id,
-            firstName: user.firstName,
-            lastName: user.lastName,
-            email: user.email,
-        }
-    });
+    res.status(200).json(user);
 });
