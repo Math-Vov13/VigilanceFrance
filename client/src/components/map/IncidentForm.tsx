@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
+import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../ui/dialog';
 import { incidentTypes, severityLevels } from '../../constants/constants';
 import { Incident, Coordinates } from '../../types';
-import { MapPin, AlertCircle} from 'lucide-react';
+import { MapPin, AlertCircle } from 'lucide-react';
 
 interface IncidentFormProps {
   open: boolean;
@@ -28,18 +29,17 @@ export function IncidentForm({
     title: '',
     description: '',
     location: '',
+    date: new Date().toISOString(),
     coordinates: initialCoordinates || { lat: 0, lng: 0 },
     severity: 'moyen',
   });
 
-  // Mettre à jour l'adresse quand initialAddress change
   useEffect(() => {
     if (initialAddress) {
       setFormData(prev => ({ ...prev, location: initialAddress }));
     }
   }, [initialAddress]);
 
-  // Mettre à jour les coordonnées quand initialCoordinates change
   useEffect(() => {
     if (initialCoordinates) {
       setFormData(prev => ({ ...prev, coordinates: initialCoordinates }));
@@ -52,7 +52,33 @@ export function IncidentForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+    if (formData.title.length < 6) {
+      alert("Le titre doit contenir au moins 6 caractères");
+      return;
+    }
+    
+    if (formData.description.length < 6) {
+      alert("La description doit contenir au moins 6 caractères");
+      return;
+    }
+    
+    if (formData.location.length < 6) {
+      alert("L'adresse doit contenir au moins 6 caractères");
+      return;
+    }
+    
+    if (formData.type.length < 6) {
+      alert("Veuillez sélectionner un type d'incident valide");
+      return;
+    }
+    if (formData.severity.length < 6) {
+      setFormData(prev => ({ ...prev, severity: 'moyen' }));
+    }
+    
+    onSubmit({
+      ...formData,
+      date: formData.date || new Date().toISOString(),
+    });
     onClose();
   };
 
@@ -65,7 +91,7 @@ export function IncidentForm({
         
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Type d'incident</label>
+            <Label className="block text-sm font-medium mb-1">Type d'incident</Label>
             <Select 
               value={formData.type} 
               onValueChange={(value) => handleChange('type', value)}
@@ -85,44 +111,47 @@ export function IncidentForm({
           </div>
           
           <div>
-            <label className="block text-sm font-medium mb-1">Titre</label>
+            <Label className="block text-sm font-medium mb-1">Titre</Label>
             <Input
               required
               value={formData.title}
               onChange={(e) => handleChange('title', e.target.value)}
-              placeholder="Titre bref décrivant l'incident"
+              placeholder="Titre bref décrivant l'incident (min. 6 caractères)"
+              minLength={6}
             />
           </div>
           
           <div>
-            <label className="block text-sm font-medium mb-1">Description</label>
+            <Label className="block text-sm font-medium mb-1">Description</Label>
             <Textarea
               required
               value={formData.description}
               onChange={(e) => handleChange('description', e.target.value)}
-              placeholder="Décrivez ce qui s'est passé avec le plus de détails possible"
+              placeholder="Décrivez ce qui s'est passé avec le plus de détails possible (min. 6 caractères)"
               rows={3}
+              minLength={6}
             />
           </div>
           
           <div>
-            <label className="block text-sm font-medium mb-1">
+            <Label className="block text-sm font-medium mb-1">
               <MapPin className="inline-block w-4 h-4 mr-1" />
               Adresse
-            </label>
+            </Label>
             <Input
               required
               value={formData.location}
               onChange={(e) => handleChange('location', e.target.value)}
-              placeholder="Adresse ou lieu précis"
+              placeholder="Adresse ou lieu précis (min. 6 caractères)"
+              minLength={6}
             />
           </div>
           
           <div>
-            <label className="block text-sm font-medium mb-1">
+            <Label className="block text-sm font-medium mb-1">
               <AlertCircle className="inline-block w-4 h-4 mr-1" />
               Gravité
-            </label>
+            </Label>
             <Select 
               value={formData.severity} 
               onValueChange={(value) => handleChange('severity', value)}

@@ -10,7 +10,7 @@ export interface User {
 export interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<ApiResponse<User>>;
-  register: (userData: Omit<User, 'id'> & { password: string }) => Promise<void>;
+  register: (userData: Omit<User, 'id'> & { password: string }) => Promise<ApiResponse<User>>;
   logout: () => Promise<void>;
   googleAuth: (token: string) => Promise<ApiResponse<User>>;
   franceConnectAuth: (code: string) => Promise<ApiResponse<User>>;
@@ -21,7 +21,7 @@ export interface AuthContextType {
 }
 
 export interface Comment {
-  id: number;
+  id: string;
   user: string;
   text: string;
   date: string;
@@ -29,22 +29,18 @@ export interface Comment {
   reported?: boolean;
 }
 
-export type IncidentSeverity = 'mineur' | 'moyen' | 'majeur';
-
-export type IncidentType = 'accident' | 'inondation' | 'vol' | 'agression' | 'incendie' | 'autre';
-
-
 export interface Coordinates {
   lat: number;
   lng: number;
 }
 export interface Incident {
-  id: number;
+  id: string;
   type: string;              
   title: string;             
   description: string;        
   location: string;           
-  coordinates: Coordinates;                
+  coordinates: Coordinates;
+  date: string;                
   status?: 'active' | 'verified' | 'resolved' | 'unverified';
   severity: 'faible' | 'moyen' | 'élevé' | 'critique';                
   upvotes?: number;           

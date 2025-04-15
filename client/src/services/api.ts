@@ -1,4 +1,4 @@
-import axios, { AxiosError, AxiosRequestConfig } from 'axios';
+import axios from 'axios';
 import { User, Incident } from '@/types';
 import { tokenService } from './tokenService';
 
@@ -28,26 +28,37 @@ apiClient.interceptors.request.use((config) => {
 }, Promise.reject);
 
 apiClient.interceptors.response.use(
-  (res) => res,
-  async (error: AxiosError) => {
-    const originalRequest = error.config as AxiosRequestConfig;
-    const refreshToken = tokenService.getRefreshToken();
+  res => res,
+  async error => {
+    const originalRequest = error.config;
 
-    if (error.response?.status === 401 && refreshToken && !originalRequest.url?.includes('/auth/auth/refresh')) {
+    if (
+      error.response?.status === 401 && // Unauthorized
+      !originalRequest._retry
+    ) {
+      originalRequest._retry = true;
+
       try {
-        await apiClient.post('/auth/auth/refresh');
-        return apiClient(originalRequest);
+        const refreshToken = tokenService.getRefreshToken();
+        if (!refreshToken) throw new Error('No refresh token');
+
+        const { data } = await axios.post(
+          `${import.meta.env.VITE_API_URL}/auth/refresh`,
+          {},
+          { withCredentials: true }
+        );
+
+        if (data?._rft) {
+          tokenService.setRefreshToken(data._rft);
+          return apiClient(originalRequest);
+        }
       } catch (refreshError) {
         tokenService.clearRefreshToken();
-        window.location.href = '/auth';
         return Promise.reject(refreshError);
       }
-    } else {
-      tokenService.clearRefreshToken();
     }
 
-    const message = (error.response?.data as ApiResponse)?.message ?? 'Une erreur est survenue';
-    return Promise.reject(new Error(message));
+    return Promise.reject(error);
   }
 );
 
@@ -95,8 +106,18 @@ export const mapsApi = {
   
   createIncident: async (data: Omit<Incident, 'id' | 'comments'>) => {
     try {
-      const response = await apiClient.post('/maps/interactions/issues/create', data);
-      return extractData<Incident>(response);
+      const requestData = {
+        type: data.type,
+        title: data.title,
+        description: data.description,
+        severity: data.severity,
+        location: data.location,
+        coordinates: data.coordinates,
+        date: data.date || new Date().toISOString()
+      };
+      
+      const response = await apiClient.post('/maps/interactions/issues/create', requestData);
+      return response.data;
     } catch (error) {
       console.error('Error creating incident:', error);
       throw error;
@@ -114,9 +135,9 @@ export const mapsApi = {
   },
   
   // Commentaires
-  addComment: async (id: string | number, text: string, username: string) => {
+  addComment: async (id: string | number, text: string, user: string) => {
     try {
-      const response = await apiClient.post(`/maps/interactions/issues/${id}/comments`, { text, username });
+      const response = await apiClient.post(`/maps/interactions/issues/${id}/comments`, { text, user });
       return extractData<{ id: number; date: string }>(response);
     } catch (error) {
       console.error(`Error adding comment to incident ${id}:`, error);

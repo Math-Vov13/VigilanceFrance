@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Comment, Incident } from '../../types';
 import { Button } from '../ui/button';
-import { X, MapPin, Clock, User, AlertTriangle, ArrowUp, Share2, CheckCircle } from 'lucide-react';
+import { X, MapPin, Clock, ArrowUp, Share2, CheckCircle } from 'lucide-react';
 import { CommentSection } from './CommentSection';
 import { incidentTypes, severityLevels } from '../../constants/constants';
 import { format } from 'date-fns';
@@ -10,11 +10,11 @@ import { fr } from 'date-fns/locale';
 interface IncidentSidebarProps {
   incident: Incident;
   onClose: () => void;
-  onAddComment: (incidentId: number, comment: Omit<Comment, 'id' | 'date'>) => void;
-  onLikeComment?: (incidentId: number, commentId: number) => void;
-  onReportComment?: (incidentId: number, commentId: number) => void;
-  onUpvote?: (incidentId: number) => void;
-  onMarkAsSolved?: (incidentId: number) => void;
+  onAddComment: (incidentId: string, comment: Omit<Comment, 'id' | 'date'>) => void;
+  onLikeComment?: (incidentId: string, commentId: string) => void;
+  onReportComment?: (incidentId: string, commentId: string) => void;
+  onUpvote?: (incidentId: string) => void;
+  onMarkAsSolved?: (incidentId: string) => void;
 }
 
 export function IncidentSidebar({ 

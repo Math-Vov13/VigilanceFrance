@@ -2,8 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { GoogleMap, Marker, InfoWindow, useJsApiLoader } from '@react-google-maps/api';
 import { Incident } from '../../types';
 import { defaultMapCenter, defaultMapZoom, incidentTypes } from '../../constants/constants';
-import { Button } from '../ui/button';
-import { Loader2, Plus } from 'lucide-react';
+import { Loader2} from 'lucide-react';
 import { IncidentForm } from './IncidentForm';
 
 interface IncidentMapProps {
@@ -56,7 +55,6 @@ export function IncidentMap({
       
       setNewIncidentCoords(coords);
       
-      // Récupérer l'adresse à partir des coordonnées
       try {
         const response = await geocoderRef.current.geocode({ location: coords });
         if (response.results && response.results[0]) {
@@ -126,10 +124,12 @@ export function IncidentMap({
       const bounds = new google.maps.LatLngBounds();
       
       filteredIncidents.forEach(incident => {
+        
         bounds.extend(new google.maps.LatLng(
           incident.coordinates.lat,
           incident.coordinates.lng,
         ));
+        console.log('incident id:', incident.id);
       });
       
       // Only adjust bounds if we have multiple points
@@ -172,7 +172,7 @@ export function IncidentMap({
       >
         {filteredIncidents.map(incident => (
           <Marker
-            key={incident.id}
+            key={incident.id || `${incident.coordinates.lat}-${incident.coordinates.lng}`}
             position={{ 
               lat: incident.coordinates.lat, 
               lng: incident.coordinates.lng, 
@@ -181,7 +181,8 @@ export function IncidentMap({
             icon={getMarkerIcon(incident.type)}
             animation={google.maps.Animation.DROP}
           />
-        ))}
+        ))};
+        
         
         {selectedMarker && (
           <InfoWindow
@@ -197,6 +198,7 @@ export function IncidentMap({
             </div>
           </InfoWindow>
         )}
+        
       </GoogleMap>
       
       {/* Add Incident Button - Retirée car nous utilisons le clic sur la carte à la place */}

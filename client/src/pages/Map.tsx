@@ -10,6 +10,7 @@ import { Filter, X, Loader2 } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '../components/ui/sheet';
 import { Button } from '../components/ui/button';
 import axios from 'axios';
+import { v4 as uuidv4 } from 'uuid';
 
 const API_GATEWAY_URL = import.meta.env.VITE_API_GATEWAY_URL;
 
@@ -22,23 +23,27 @@ export default function MapPage() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Extraction des données d'API améliorée avec une fonction réutilisable
-  const extractIncidentData = useCallback((response: any): Incident[] => {
-    if (response?.content && Array.isArray(response.content)) {
-      return response.content;
-    } else if (response?.data && Array.isArray(response.data)) {
-      return response.data;
-    } else if (response?.data?.content && Array.isArray(response.data.content)) {
-      return response.data.content;
-    } else if (Array.isArray(response)) {
-      return response;
-    } else {
-      console.error("Structure de données inattendue:", response);
-      return [];
-    }
-  }, []);
-  
   const fetchIncidents = useCallback(async (typeFilter = '') => {
+    const extractIncidentData = (data: any): Incident[] => {
+      if (!data || !data.content || !Array.isArray(data.content)) return [];
+    
+      return data.content.map((item: any) => ({
+        id: item._id, // ✅ map MongoDB _id to id
+        type: item.type || 'autre',
+        title: item.title || 'Sans titre',
+        description: item.description || '',
+        location: item.location || '',
+        coordinates: item.coordinates || { lat: 0, lng: 0 },
+        date: item.created_at || new Date().toISOString(),
+        status: item.solved?.length ? 'resolved' : 'active',
+        severity: item.severity || 'moyen',
+        upvotes: item.votes?.length || 0,
+        downvotes: 0, 
+        comments: [], 
+        imageUrls: [],
+      }));
+    };
+  
     try {
       setIsLoading(true);
       
@@ -58,21 +63,25 @@ export default function MapPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [extractIncidentData]);
+  }, []);
 
   // Charger les incidents au chargement
   useEffect(() => {
     fetchIncidents();
   }, [fetchIncidents]);
   
-  // Memoized active filter label
   const getActiveFilterLabel = useMemo(() => (filterType: string) => {
     const filterMap: Record<string, string> = {
-      'accident': 'Accidents',
-      'inondation': 'Inondations',
-      'vol': 'Vols',
-      'agression': 'Agressions',
+      'accident': 'Accident de la route',
+      'inondation': 'Inondation',
       'incendie': 'Incendies',
+      'vol': 'Vol/Cambriolage',
+      'agression': 'Agression',
+      'manifestation': 'Manifestation',
+      'panne': 'Panne/Coupure',
+      'pollution': 'Pollution',
+      'autre': 'Autre incident',
+      
     };
     
     return filterMap[filterType] || 'Tous les incidents';
@@ -96,7 +105,7 @@ export default function MapPage() {
     fetchIncidents(value);
   }, [fetchIncidents]);
 
-  // Add new incident
+
   const handleAddIncident = useCallback(async (newIncident: Omit<Incident, 'id' | 'comments'>) => {
     try {
       setIsLoading(true);
@@ -117,10 +126,10 @@ export default function MapPage() {
       
       const incident: Incident = {
         ...createdIncident,
-        comments: createdIncident.comments || [],
-        status: createdIncident.status || 'unverified',
-        upvotes: createdIncident.upvotes || 0,
-        downvotes: createdIncident.downvotes || 0
+        comments: createdIncident.comments ?? [],
+        status: createdIncident.status ?? 'unverified',
+        upvotes: createdIncident.upvotes ?? 0,
+        downvotes: createdIncident.downvotes ?? 0
       };
       
       setIncidents(prev => [...prev, incident]);
@@ -134,13 +143,13 @@ export default function MapPage() {
   }, []);
   
   // Add comment to an incident
-  const handleAddComment = useCallback(async (incidentId: number, comment: Omit<Comment, 'id' | 'date'>) => {
+  const handleAddComment = useCallback(async (incidentId: string, comment: Omit<Comment, 'id' | 'date'>) => {
     setIncidents(prevIncidents => 
       prevIncidents.map(incident => {
         if (incident.id === incidentId) {
           const newComment: Comment = {
             ...comment,
-            id: Math.max(...(incident.comments?.map(c => c.id) || [0]), 0) + 1,
+            id: uuidv4(),
             date: new Date().toISOString()
           };
           
@@ -162,7 +171,7 @@ export default function MapPage() {
   }, [incidents, selectedIncident]);
   
   // Vote for an incident
-  const handleUpvote = useCallback(async (incidentId: number) => {
+  const handleUpvote = useCallback(async (incidentId: string) => {
     try {
       await axios.post(
         `${API_GATEWAY_URL}/maps/interactions/votes/create?issue_id=${incidentId}`,
@@ -175,7 +184,7 @@ export default function MapPage() {
           if (incident.id === incidentId) {
             return {
               ...incident,
-              upvotes: (incident.upvotes || 0) + 1
+              upvotes: (incident.upvotes ?? 0) + 1
             };
           }
           return incident;
@@ -185,7 +194,7 @@ export default function MapPage() {
       if (selectedIncident && selectedIncident.id === incidentId) {
         setSelectedIncident({
           ...selectedIncident,
-          upvotes: (selectedIncident.upvotes || 0) + 1
+          upvotes: (selectedIncident.upvotes ?? 0) + 1
         });
       }
     } catch (err) {
@@ -195,7 +204,7 @@ export default function MapPage() {
   }, [selectedIncident]);
   
   // Mark incident as solved
-  const handleMarkAsSolved = useCallback(async (incidentId: number) => {
+  const handleMarkAsSolved = useCallback(async (incidentId: string) => {
     try {
       const response = await axios.post(
         `${API_GATEWAY_URL}/maps/interactions/solved/create?issue_id=${incidentId}`,
@@ -228,7 +237,7 @@ export default function MapPage() {
   }, [selectedIncident]);
   
   // Like a comment
-  const handleLikeComment = useCallback((incidentId: number, commentId: number) => {
+  const handleLikeComment = useCallback((incidentId: string, commentId: string) => {
     setIncidents(prevIncidents => 
       prevIncidents.map(incident => {
         if (incident.id === incidentId) {
@@ -236,7 +245,7 @@ export default function MapPage() {
             ...incident,
             comments: (incident.comments || []).map(comment => {
               if (comment.id === commentId) {
-                return { ...comment, likes: (comment.likes || 0) + 1 };
+                return { ...comment, likes: (comment.likes ?? 0) + 1 };
               }
               return comment;
             })
@@ -248,7 +257,7 @@ export default function MapPage() {
   }, []);
   
   // Report a comment
-  const handleReportComment = useCallback((incidentId: number, commentId: number) => {
+  const handleReportComment = useCallback((incidentId: string, commentId: string) => {
     setIncidents(prevIncidents => 
       prevIncidents.map(incident => {
         if (incident.id === incidentId) {
@@ -269,7 +278,7 @@ export default function MapPage() {
     alert('Commentaire signalé aux modérateurs. Merci de votre vigilance!');
   }, []);
   
-  const safeIncidents = incidents || [];
+  const safeIncidents = incidents ?? [];
   
   // Memoize count by type to prevent unnecessary recalculations
   const countByType = useMemo(() => 

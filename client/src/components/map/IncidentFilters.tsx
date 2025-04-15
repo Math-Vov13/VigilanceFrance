@@ -7,7 +7,8 @@ import {
   AlertTriangle, 
   Flame, 
   Shield, 
-  MapPin
+  MapPin,
+  User2Icon
 } from 'lucide-react';
 
 type IncidentFiltersProps = {
@@ -20,7 +21,10 @@ export function IncidentFilters({ selectedType, onChange }: IncidentFiltersProps
   const incidentTypes = [
     { value: 'all', label: 'Tous les incidents', icon: <MapPin className="h-4 w-4" /> },
     { value: 'accident', label: 'Accidents', icon: <AlertCircle className="h-4 w-4" /> },
+    { value: 'panne', label: 'Pannes', icon: <AlertTriangle className="h-4 w-4" /> },
+    { value: 'pollution', label: 'Pollutions', icon: <AlertCircle className="h-4 w-4" /> },
     { value: 'inondation', label: 'Inondations', icon: <Droplets className="h-4 w-4" /> },
+    { value: 'manifestation', label: 'Manifestations', icon: <User2Icon className="h-4 w-4" /> },
     { value: 'vol', label: 'Vols', icon: <Shield className="h-4 w-4" /> },
     { value: 'agression', label: 'Agressions', icon: <AlertTriangle className="h-4 w-4" /> },
     { value: 'incendie', label: 'Incendies', icon: <Flame className="h-4 w-4" /> },

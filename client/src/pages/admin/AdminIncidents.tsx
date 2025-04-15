@@ -87,6 +87,7 @@ export function AdminIncidents() {
       const date = new Date(dateString);
       return format(date, 'Pp', { locale: fr });
     } catch (error) {
+      console.error('Error formatting date:', error);
       return dateString;
     }
   };
@@ -403,9 +404,6 @@ export function AdminIncidents() {
                       <TableCell>
                         <div>
                           <p className="font-medium truncate max-w-xs">{incident.title}</p>
-                          <p className="text-xs text-gray-500 truncate max-w-xs">
-                            Signalé par {incident.reportedBy}
-                          </p>
                         </div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">

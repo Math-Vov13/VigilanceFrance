@@ -15,10 +15,10 @@ import {
 
 interface CommentSectionProps {
   comments: Comment[];
-  incidentId: number;
-  onAddComment: (incidentId: number, comment: Omit<Comment, 'id' | 'date'>) => void;
-  onLikeComment?: (incidentId: number, commentId: number) => void;
-  onReportComment?: (incidentId: number, commentId: number) => void;
+  incidentId: string;
+  onAddComment: (incidentId: string, comment: Omit<Comment, 'id' | 'date'>) => void;
+  onLikeComment?: (incidentId: string, commentId: string) => void;
+  onReportComment?: (incidentId: string, commentId: string) => void;
 }
 
 export function CommentSection({ 
