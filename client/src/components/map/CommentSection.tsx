@@ -1,163 +1,158 @@
+// Updated CommentSection component with proper safety checks
 import { useState } from 'react';
-import { Button } from '../ui/button';
-import { Textarea } from '../ui/textarea';
 import { Comment } from '../../types';
-import { Avatar, AvatarFallback } from '../ui/avatar';
-import { ThumbsUp, Flag, MoreVertical } from 'lucide-react';
+import { Button } from '../ui/button';
+import { ThumbsUp, Flag } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuTrigger 
-} from '../ui/dropdown-menu';
 
 interface CommentSectionProps {
-  comments: Comment[];
   incidentId: string;
+  comments?: Comment[];
   onAddComment: (incidentId: string, comment: Omit<Comment, 'id' | 'date'>) => void;
   onLikeComment?: (incidentId: string, commentId: string) => void;
   onReportComment?: (incidentId: string, commentId: string) => void;
 }
 
-export function CommentSection({ 
-  comments, 
-  incidentId, 
+export function CommentSection({
+  incidentId,
+  comments = [], // Provide a default empty array
   onAddComment,
   onLikeComment,
   onReportComment
 }: CommentSectionProps) {
-  const [newComment, setNewComment] = useState('');
-  const [username, setUsername] = useState('');
+  const [commentText, setCommentText] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
+  // Safely format the relative time
+  const formatRelativeTime = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      // Check if it's a valid date
+      if (isNaN(date.getTime())) {
+        return 'il y a un moment';
+      }
+      return formatDistanceToNow(date, { locale: fr, addSuffix: true });
+    } catch (error) {
+      console.error('Error formatting relative time:', error);
+      return 'il y a un moment';
+    }
+  };
+  
+  // Handle comment submit
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (newComment.trim() && username.trim()) {
+    if (!commentText.trim()) return;
+    
+    setIsSubmitting(true);
+    
+    try {
       onAddComment(incidentId, {
-        user: username,
-        text: newComment,
+        text: commentText.trim(),
+        user: 'Utilisateur',
         likes: 0,
         reported: false
       });
       
-      setNewComment('');
+      setCommentText('');
+    } finally {
+      setIsSubmitting(false);
     }
   };
   
-  // Get initials for avatar
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(part => part[0])
-      .join('')
-      .toUpperCase()
-      .substring(0, 2);
-  };
-  
-  // Format date to relative time (e.g., "il y a 2 heures")
-  const formatRelativeTime = (dateString: string) => {
-    try {
-      const date = new Date(dateString);
-      return formatDistanceToNow(date, { 
-        addSuffix: true, 
-        locale: fr 
-      });
-    } catch (error) {
-      console.error('Error formatting date:', error);
-      return dateString;
+  // Handle like comment
+  const handleLike = (commentId: string) => {
+    if (onLikeComment) {
+      onLikeComment(incidentId, commentId);
     }
   };
+  
+  // Handle report comment
+  const handleReport = (commentId: string) => {
+    if (onReportComment) {
+      onReportComment(incidentId, commentId);
+    }
+  };
+  
+  // Ensure comments is an array (defensive programming)
+  const safeComments = Array.isArray(comments) ? comments : [];
   
   return (
-    <div className="space-y-6">
-      <h3 className="text-lg font-semibold">
-        Commentaires ({comments.length})
-      </h3>
+    <div>
+      <h3 className="text-lg font-semibold mb-4">Commentaires ({safeComments.length})</h3>
       
-      {comments.length > 0 ? (
-        <div className="space-y-4">
-          {comments.map(comment => (
-            <div key={comment.id} className="p-4 bg-gray-50 rounded-lg">
-              <div className="flex items-start gap-3">
-                <Avatar className="h-8 w-8 bg-blue-100 text-blue-800">
-                  <AvatarFallback>{getInitials(comment.user)}</AvatarFallback>
-                </Avatar>
-                
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <p className="font-medium text-sm">{comment.user}</p>
-                    <p className="text-xs text-gray-500">{formatRelativeTime(comment.date)}</p>
-                  </div>
-                  
-                  <p className="mt-1 text-sm text-gray-700">{comment.text}</p>
-                  
-                  <div className="flex items-center mt-2 gap-4">
-                    <button 
-                      className="flex items-center text-xs text-gray-500 hover:text-blue-600"
-                      onClick={() => onLikeComment && onLikeComment(incidentId, comment.id)}
-                    >
-                      <ThumbsUp className="h-4 w-4 mr-1" />
-                      {comment.likes || 0}
-                    </button>
+      {/* Comment list */}
+      {safeComments.length > 0 ? (
+        <div className="space-y-4 mb-6">
+          {safeComments.map(comment => (
+            <div 
+              key={comment.id} 
+              className={`p-3 rounded-lg ${
+                comment.reported 
+                  ? 'bg-gray-100 text-gray-500' 
+                  : 'bg-gray-100'
+              }`}
+            >
+              {comment.reported ? (
+                <p className="text-sm italic">Ce commentaire a été signalé et est en attente de modération.</p>
+              ) : (
+                <>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="font-medium">{comment.user || 'Utilisateur'}</p>
+                      <p className="text-sm text-gray-500">
+                        {comment.date ? formatRelativeTime(comment.date) : 'il y a un moment'}
+                      </p>
+                    </div>
                     
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button className="flex items-center text-xs text-gray-500 hover:text-red-600">
-                          <MoreVertical className="h-4 w-4" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-40">
-                        <DropdownMenuItem 
-                          className="text-red-600 cursor-pointer"
-                          onClick={() => onReportComment && onReportComment(incidentId, comment.id)}
-                        >
-                          <Flag className="h-4 w-4 mr-2" />
-                          Signaler
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <div className="flex items-center space-x-2">
+                      <button 
+                        className="text-gray-500 hover:text-blue-600"
+                        onClick={() => handleLike(comment.id)}
+                      >
+                        <ThumbsUp className="h-4 w-4" />
+                      </button>
+                      
+                      <span className="text-sm">{comment.likes || 0}</span>
+                      
+                      <button 
+                        className="text-gray-500 hover:text-red-600"
+                        onClick={() => handleReport(comment.id)}
+                      >
+                        <Flag className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              </div>
+                  
+                  <p className="mt-2">{comment.text}</p>
+                </>
+              )}
             </div>
           ))}
         </div>
       ) : (
-        <p className="text-sm text-gray-500 italic">
-          Aucun commentaire pour le moment. Soyez le premier à commenter.
-        </p>
+        <p className="text-gray-500 mb-6">Aucun commentaire pour le moment.</p>
       )}
       
-      {/* Add Comment Form */}
-      <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-        <div>
-          <label className="block text-sm font-medium mb-1">Votre nom</label>
-          <input
-            type="text"
-            className="px-3 py-2 border border-gray-300 rounded-md w-full text-sm"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            placeholder="Votre nom ou pseudo"
-            required
+      {/* Add comment form */}
+      <form onSubmit={handleSubmit}>
+        <div className="space-y-3">
+          <textarea
+            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="Ajouter un commentaire..."
+            rows={3}
+            value={commentText}
+            onChange={(e) => setCommentText(e.target.value)}
           />
+          
+          <Button 
+            type="submit"
+            disabled={isSubmitting || !commentText.trim()}
+          >
+            {isSubmitting ? 'Envoi...' : 'Commenter'}
+          </Button>
         </div>
-        
-        <div>
-          <label className="block text-sm font-medium mb-1">Votre commentaire</label>
-          <Textarea
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            placeholder="Partagez vos informations ou observations..."
-            className="min-h-24 resize-y"
-            required
-          />
-        </div>
-        
-        <Button type="submit" className="w-full md:w-auto">
-          Publier le commentaire
-        </Button>
       </form>
     </div>
   );

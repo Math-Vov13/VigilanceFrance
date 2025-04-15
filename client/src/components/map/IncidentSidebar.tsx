@@ -44,17 +44,24 @@ export function IncidentSidebar({
   };
   
   // Format date
-  const formatDate = (dateString: string) => {
-    try {
-      const date = new Date(dateString);
-      return format(date, 'PPpp', { locale: fr });
-    } catch (error) {
-      console.error('Error formatting date:', error);
-      return dateString;
+  // Updated formatDate function with proper error handling for IncidentSidebar.tsx
+const formatDate = (dateString: string) => {
+  try {
+    if (!dateString || dateString === 'Invalid Date') {
+      return 'Date inconnue';
     }
-  };
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+      return 'Date invalide';
+    }
+    
+    return format(date, 'PPpp', { locale: fr });
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return 'Date inconnue';
+  }
+};
   
-  // Handle upvote
   const handleUpvote = () => {
     if (onUpvote && !hasVoted) {
       onUpvote(incident.id);

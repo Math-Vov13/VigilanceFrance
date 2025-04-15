@@ -14,7 +14,7 @@ export interface AuthContextType {
   logout: () => Promise<void>;
   googleAuth: (token: string) => Promise<ApiResponse<User>>;
   franceConnectAuth: (code: string) => Promise<ApiResponse<User>>;
-  refreshAuthToken: () => Promise<boolean>; // New function for token refresh
+  refreshAuthToken: () => Promise<boolean>;
   isAuthenticated: boolean;
   loading: boolean;
   error: string | null;
@@ -41,58 +41,53 @@ export interface Incident {
   location: string;           
   coordinates: Coordinates;
   date: string;                
-  status?: 'active' | 'verified' | 'resolved' | 'unverified';
-  severity: 'faible' | 'moyen' | 'élevé' | 'critique';                
+  status?: IncidentStatus;
+  severity: IncidentSeverity;                
   upvotes?: number;           
   downvotes?: number;         
   comments: Comment[];        
   imageUrls?: string[];      
 }
-// Map component props
-export interface IncidentMapProps {
-  incidents: Incident[];
-  onMarkerClick: (incident: Incident) => void;
-  filteredType?: string;
-  isLoading?: boolean;
+
+
+export type IncidentType = 
+  | 'accident'
+  | 'inondation'
+  | 'incendie'
+  | 'vol'
+  | 'agression'
+  | 'manifestation'
+  | 'panne'
+  | 'pollution'
+  | 'autre';
+
+export type IncidentSeverity = 
+  | 'mineur'
+  | 'moyen'
+  | 'majeur'
+  | 'critique';
+
+export type IncidentStatus = 
+  | 'active'
+  | 'verified'
+  | 'resolved'
+  | 'unverified';
+
+export interface IncidentTypeInfo {
+  value: IncidentType;
+  label: string;
+  color: string;
+  icon: string;
 }
 
-export interface IncidentSidebarProps {
-  incident: Incident;
-  onClose: () => void;
-  onAddComment?: (comment: string) => void;
+export interface SeverityLevel {
+  value: IncidentSeverity;
+  label: string;
+  color: string;
 }
 
-export interface IncidentFiltersProps {
-  selectedType: string;
-  onChange: (value: string) => void;
-}
-
-export interface Notification {
-  id: number;
-  type: 'incident_near' | 'comment_added' | 'incident_update' | 'system';
-  title: string;
-  message: string;
-  date: string;
-  read: boolean;
-  relatedId?: number;
-}
-
-export interface VoteResponse {
-  connected: boolean;
-  issue_id: string;
-  votes: number;
-  voted: boolean;
-}
-
-export interface CreateVoteResponse {
-  user_id: string;
-  issue_id: string;
-  vote_id: string;
-}
-
-export interface SolvedResponse {
-  solved: boolean;
-  user_id: string;
-  issue_id: string;
-  vote_id: string;
+export interface IncidentStatusInfo {
+  value: IncidentStatus;
+  label: string;
+  color: string;
 }

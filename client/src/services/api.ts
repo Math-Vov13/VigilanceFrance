@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { User, Incident } from '@/types';
+import { User, Incident, IncidentType } from '@/types';
 import { tokenService } from './tokenService';
 
 const API_GATEWAY_URL = import.meta.env.VITE_API_GATEWAY_URL;
@@ -84,7 +84,7 @@ const extractData = <T>(response: any): T => {
 
 export const mapsApi = {
   // Récupération des incidents
-  getIncidents: async (filters?: { type?: string; severity?: string; startDate?: string; endDate?: string; location?: string }) => {
+  getIncidents: async (filters?: IncidentType) => {
     try {
       const response = await apiClient.get('/maps/interactions/issues/show', { params: filters });
       return extractData<Incident[]>(response);
@@ -104,22 +104,42 @@ export const mapsApi = {
     }
   },
   
-  createIncident: async (data: Omit<Incident, 'id' | 'comments'>) => {
+  createIncident: async (newIncident: Omit<Incident, 'id' | 'comments'>): Promise<Incident> => {
     try {
-      const requestData = {
-        type: data.type,
-        title: data.title,
-        description: data.description,
-        severity: data.severity,
-        location: data.location,
-        coordinates: data.coordinates,
-        date: data.date || new Date().toISOString()
-      };
+      const response = await apiClient.post('/maps/interactions/issues/create', newIncident);
       
-      const response = await apiClient.post('/maps/interactions/issues/create', requestData);
-      return response.data;
+      let createdIncident;
+      if (response.data?.issue) {
+        createdIncident = response.data.issue;
+      } else if (response.data?.data) {
+        createdIncident = response.data.data;
+      } else {
+        createdIncident = response.data;
+      }
+      const coordinates = createdIncident.coordinates && 
+                        typeof createdIncident.coordinates === 'object' && 
+                        typeof createdIncident.coordinates.lat === 'number' && 
+                        typeof createdIncident.coordinates.lng === 'number' 
+                        ? createdIncident.coordinates 
+                        : newIncident.coordinates || { lat: 0, lng: 0 };
+      
+      return {
+        id: createdIncident._id || createdIncident.id || `temp-${Date.now()}`,
+        type: createdIncident.type || newIncident.type || 'other',
+        title: createdIncident.title || newIncident.title || 'Incident sans titre',
+        description: createdIncident.description || newIncident.description || '',
+        location: createdIncident.location || newIncident.location || 'Emplacement inconnu',
+        coordinates,
+        date: createdIncident.created_at || new Date().toISOString(),
+        status: createdIncident.status || 'unverified',
+        severity: createdIncident.severity || newIncident.severity || 'moyen',
+        upvotes: createdIncident.votes?.length || 0,
+        downvotes: 0,
+        comments: createdIncident.comments || [],
+        imageUrls: createdIncident.imageUrls || [],
+      };
     } catch (error) {
-      console.error('Error creating incident:', error);
+      console.error('Failed to create incident:', error);
       throw error;
     }
   },
@@ -135,9 +155,9 @@ export const mapsApi = {
   },
   
   // Commentaires
-  addComment: async (id: string | number, text: string, user: string) => {
+  addComment: async (id: string | number, text: string) => {
     try {
-      const response = await apiClient.post(`/maps/interactions/issues/${id}/comments`, { text, user });
+      const response = await apiClient.post(`/maps/interactions/issues/${id}/comments`, { text });
       return extractData<{ id: number; date: string }>(response);
     } catch (error) {
       console.error(`Error adding comment to incident ${id}:`, error);
@@ -145,7 +165,7 @@ export const mapsApi = {
     }
   },
   
-  likeComment: async (incidentId: string | number, commentId: number) => {
+  likeComment: async (incidentId: string | number, commentId: string | number) => {
     try {
       const response = await apiClient.post(`/maps/interactions/issues/${incidentId}/comments/${commentId}/like`);
       return extractData<{ likes: number }>(response);
@@ -155,7 +175,7 @@ export const mapsApi = {
     }
   },
   
-  reportComment: async (incidentId: string | number, commentId: number, reason?: string) => {
+  reportComment: async (incidentId: string | number, commentId: string | number, reason?: string) => {
     try {
       const response = await apiClient.post(`/maps/interactions/issues/${incidentId}/comments/${commentId}/report`, { reason });
       return extractData<{ reported: boolean }>(response);

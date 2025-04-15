@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { GoogleMap, Marker, InfoWindow, useJsApiLoader } from '@react-google-maps/api';
 import { Incident } from '../../types';
 import { defaultMapCenter, defaultMapZoom, incidentTypes } from '../../constants/constants';
-import { Loader2} from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { IncidentForm } from './IncidentForm';
 
 interface IncidentMapProps {
@@ -20,8 +20,8 @@ export function IncidentMap({
 }: IncidentMapProps) {
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
-    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
-    libraries: ['places'], // Ajout de la bibliothèque places pour la géocodification
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
+    libraries: ['places'],
   });
 
   const [map, setMap] = useState<google.maps.Map | null>(null);
@@ -34,7 +34,7 @@ export function IncidentMap({
   const mapRef = useRef<google.maps.Map | null>(null);
   const geocoderRef = useRef<google.maps.Geocoder | null>(null);
   
-  // Initialiser le géocodeur une fois que l'API est chargée
+  // Initialize geocoder once the API is loaded
   useEffect(() => {
     if (isLoaded && !geocoderRef.current) {
       geocoderRef.current = new google.maps.Geocoder();
@@ -118,18 +118,16 @@ export function IncidentMap({
     }
   }, []);
   
-  // Reset map when filter changes - Optimisé pour ne pas recalculer à chaque rendu
+  // Reset map when filter changes - Optimized to avoid recalculating on every render
   useEffect(() => {
     if (map && filteredIncidents.length > 0) {
       const bounds = new google.maps.LatLngBounds();
       
       filteredIncidents.forEach(incident => {
-        
         bounds.extend(new google.maps.LatLng(
           incident.coordinates.lat,
           incident.coordinates.lng,
         ));
-        console.log('incident id:', incident.id);
       });
       
       // Only adjust bounds if we have multiple points
@@ -170,19 +168,20 @@ export function IncidentMap({
           ]
         }}
       >
-        {filteredIncidents.map(incident => (
-          <Marker
-            key={incident.id || `${incident.coordinates.lat}-${incident.coordinates.lng}`}
-            position={{ 
-              lat: incident.coordinates.lat, 
-              lng: incident.coordinates.lng, 
-            }}
-            onClick={() => handleMarkerClick(incident)}
-            icon={getMarkerIcon(incident.type)}
-            animation={google.maps.Animation.DROP}
-          />
-        ))};
-        
+        {filteredIncidents
+          .filter(incident => incident && incident.coordinates && typeof incident.coordinates.lat === 'number' && typeof incident.coordinates.lng === 'number')
+          .map(incident => (
+            <Marker
+              key={incident.id || `${incident.coordinates.lat}-${incident.coordinates.lng}`}
+              position={{ 
+                lat: incident.coordinates.lat, 
+                lng: incident.coordinates.lng, 
+              }}
+              onClick={() => handleMarkerClick(incident)}
+              icon={getMarkerIcon(incident.type)}
+              animation={google.maps.Animation.DROP}
+            />
+          ))}
         
         {selectedMarker && (
           <InfoWindow
@@ -198,12 +197,8 @@ export function IncidentMap({
             </div>
           </InfoWindow>
         )}
-        
       </GoogleMap>
       
-      {/* Add Incident Button - Retirée car nous utilisons le clic sur la carte à la place */}
-      
-      {/* Incident Form Dialog */}
       {addingIncident && (
         <IncidentForm
           open={addingIncident}

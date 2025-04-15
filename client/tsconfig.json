@@ -8,7 +8,11 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
-    }
+    },
+    "jsx": "react",
+    "jsxNamespace": "JSX",
+    "typeRoots": ["node_modules/@types"],
+    
   }
 
 }

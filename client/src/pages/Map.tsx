@@ -3,16 +3,13 @@ import { Navbar } from '../components/layout/Navbar';
 import { IncidentMap } from '../components/map/IncidentMap';
 import { IncidentSidebar } from '../components/map/IncidentSidebar';
 import { IncidentFilters } from '../components/map/IncidentFilters';
-import { Incident, Comment } from '../types';
+import { Incident, Comment, IncidentType } from '../types';
 import { incidentTypes } from '../constants/constants';
 import { Badge } from '../components/ui/badge';
 import { Filter, X, Loader2 } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '../components/ui/sheet';
 import { Button } from '../components/ui/button';
-import axios from 'axios';
-import { v4 as uuidv4 } from 'uuid';
-
-const API_GATEWAY_URL = import.meta.env.VITE_API_GATEWAY_URL;
+import { mapsApi } from '../services/api';
 
 export default function MapPage() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
@@ -23,37 +20,10 @@ export default function MapPage() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   
-  const fetchIncidents = useCallback(async (typeFilter = '') => {
-    const extractIncidentData = (data: any): Incident[] => {
-      if (!data || !data.content || !Array.isArray(data.content)) return [];
-    
-      return data.content.map((item: any) => ({
-        id: item._id, // ✅ map MongoDB _id to id
-        type: item.type || 'autre',
-        title: item.title || 'Sans titre',
-        description: item.description || '',
-        location: item.location || '',
-        coordinates: item.coordinates || { lat: 0, lng: 0 },
-        date: item.created_at || new Date().toISOString(),
-        status: item.solved?.length ? 'resolved' : 'active',
-        severity: item.severity || 'moyen',
-        upvotes: item.votes?.length || 0,
-        downvotes: 0, 
-        comments: [], 
-        imageUrls: [],
-      }));
-    };
-  
+  const fetchIncidents = useCallback(async (typeFilter: IncidentType | undefined = undefined) => {
     try {
       setIsLoading(true);
-      
-      const url = typeFilter && typeFilter !== 'all' 
-        ? `${API_GATEWAY_URL}/maps/interactions/issues/show?type=${typeFilter}`
-        : `${API_GATEWAY_URL}/maps/interactions/issues/show`;
-      
-      const response = await axios.get(url, { withCredentials: true });
-      const incidentData = extractIncidentData(response.data);
-      
+      const incidentData = await mapsApi.getIncidents(typeFilter);
       setIncidents(incidentData || []);
       setError(null);
     } catch (err) {
@@ -65,26 +35,16 @@ export default function MapPage() {
     }
   }, []);
 
-  // Charger les incidents au chargement
+  // Load incidents on component mount
   useEffect(() => {
     fetchIncidents();
   }, [fetchIncidents]);
   
   const getActiveFilterLabel = useMemo(() => (filterType: string) => {
-    const filterMap: Record<string, string> = {
-      'accident': 'Accident de la route',
-      'inondation': 'Inondation',
-      'incendie': 'Incendies',
-      'vol': 'Vol/Cambriolage',
-      'agression': 'Agression',
-      'manifestation': 'Manifestation',
-      'panne': 'Panne/Coupure',
-      'pollution': 'Pollution',
-      'autre': 'Autre incident',
-      
-    };
+    if (filterType === 'all') return 'Tous les incidents';
     
-    return filterMap[filterType] || 'Tous les incidents';
+    const incidentType = incidentTypes.find(type => type.value === filterType);
+    return incidentType?.label ?? 'Tous les incidents';
   }, []);
   
   // Handle marker click on map
@@ -102,36 +62,13 @@ export default function MapPage() {
   // Handle filter change
   const handleFilterChange = useCallback((value: string) => {
     setIncidentTypeFilter(value);
-    fetchIncidents(value);
+    fetchIncidents(value as IncidentType);
   }, [fetchIncidents]);
-
 
   const handleAddIncident = useCallback(async (newIncident: Omit<Incident, 'id' | 'comments'>) => {
     try {
       setIsLoading(true);
-      const response = await axios.post(
-        `${API_GATEWAY_URL}/maps/interactions/issues/create`, 
-        newIncident,
-        { withCredentials: true }
-      );
-      
-      let createdIncident;
-      if (response.data?.issue) {
-        createdIncident = response.data.issue;
-      } else if (response.data?.data) {
-        createdIncident = response.data.data;
-      } else {
-        createdIncident = response.data;
-      }
-      
-      const incident: Incident = {
-        ...createdIncident,
-        comments: createdIncident.comments ?? [],
-        status: createdIncident.status ?? 'unverified',
-        upvotes: createdIncident.upvotes ?? 0,
-        downvotes: createdIncident.downvotes ?? 0
-      };
-      
+      const incident = await mapsApi.createIncident(newIncident);
       setIncidents(prev => [...prev, incident]);
       setError(null);
     } catch (err) {
@@ -142,17 +79,12 @@ export default function MapPage() {
     }
   }, []);
   
-  // Add comment to an incident
   const handleAddComment = useCallback(async (incidentId: string, comment: Omit<Comment, 'id' | 'date'>) => {
+    const newComment = await mapsApi.addComment(incidentId, comment.text);
+    
     setIncidents(prevIncidents => 
       prevIncidents.map(incident => {
         if (incident.id === incidentId) {
-          const newComment: Comment = {
-            ...comment,
-            id: uuidv4(),
-            date: new Date().toISOString()
-          };
-          
           return {
             ...incident,
             comments: [...(incident.comments || []), newComment]
@@ -173,11 +105,7 @@ export default function MapPage() {
   // Vote for an incident
   const handleUpvote = useCallback(async (incidentId: string) => {
     try {
-      await axios.post(
-        `${API_GATEWAY_URL}/maps/interactions/votes/create?issue_id=${incidentId}`,
-        {},
-        { withCredentials: true }
-      );
+      await mapsApi.upvoteIncident(incidentId);
       
       setIncidents(prevIncidents => 
         prevIncidents.map(incident => {
@@ -206,14 +134,9 @@ export default function MapPage() {
   // Mark incident as solved
   const handleMarkAsSolved = useCallback(async (incidentId: string) => {
     try {
-      const response = await axios.post(
-        `${API_GATEWAY_URL}/maps/interactions/solved/create?issue_id=${incidentId}`,
-        {},
-        { withCredentials: true }
-      );
+      const success = await mapsApi.markAsSolved(incidentId);
       
-      const result = response.data;
-      if (result.solved) {
+      if (success) {
         setIncidents(prevIncidents => 
           prevIncidents.map(incident => {
             if (incident.id === incidentId) {
@@ -238,6 +161,8 @@ export default function MapPage() {
   
   // Like a comment
   const handleLikeComment = useCallback((incidentId: string, commentId: string) => {
+    mapsApi.likeComment(incidentId, commentId);
+    
     setIncidents(prevIncidents => 
       prevIncidents.map(incident => {
         if (incident.id === incidentId) {
@@ -258,6 +183,8 @@ export default function MapPage() {
   
   // Report a comment
   const handleReportComment = useCallback((incidentId: string, commentId: string) => {
+    mapsApi.reportComment(incidentId, commentId);
+    
     setIncidents(prevIncidents => 
       prevIncidents.map(incident => {
         if (incident.id === incidentId) {
@@ -325,7 +252,6 @@ export default function MapPage() {
       <Navbar showSearch />
       
       <div className="flex-grow flex relative">
-        {/* Desktop filters sidebar */}
         <div className="hidden md:block w-64 p-4 bg-gray-50 border-r border-gray-200 overflow-auto">
           <div className="sticky top-0">
             <h2 className="text-lg font-semibold mb-4">Filtres</h2>
