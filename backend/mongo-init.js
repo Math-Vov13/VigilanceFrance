@@ -1,24 +1,76 @@
 // Accounts DataBase
-db = db.getSiblingDB('accounts');
-use('accounts');
-
-db.createCollection("credentials");
+db = db.getSiblingDB('vigi_france_DB');
+use('vigi_france_DB');
 
 
-// Create user admin
+
+// Create Roles
+// https://www.mongodb.com/docs/manual/reference/built-in-roles/
+db.createRole({ // USERS
+  role: 'accessAccountsRole',
+  privileges: [
+    { resource: { db: 'vigi_france_DB', collection: 'accounts' }, actions: ['find', 'insert', 'update'] }
+  ],
+  roles: []
+});
+
+db.createRole({ // ISSUES
+  role: 'issuesRole',
+  privileges: [
+    { resource: { db: 'vigi_france_DB', collection: 'issues' }, actions: ['find', 'insert', 'update', 'remove'] },
+    { resource: { db: 'vigi_france_DB', collection: 'messages' }, actions: ['insert', 'remove'] }
+  ],
+  roles: []
+})
+
+db.createRole({ // MESSAGES
+  role: 'messagesRole',
+  privileges: [
+    { resource: { db: 'vigi_france_DB', collection: 'messages' }, actions: ['find', 'insert', 'update', 'remove'] },
+    { resource: { db: 'vigi_france_DB', collection: 'issues' }, actions: ['find'] }
+  ],
+  roles: []
+});
+
+
+
+// Create Users
 db.createUser({
   user: 'admin',
   pwd: 'adminpassword',
-  roles: [{ role: 'readWrite', db: 'accounts', collection: 'credentials' }]
+  roles: [{ role: 'accessAccountsRole', db: 'vigi_france_DB' }]
 });
 
-// TODO: Créer un Modèle pour la BDD
+db.createUser({
+  user: 'issue_admin',
+  pwd: 'issuespassword3124',
+  roles: [{ role: 'issuesRole', db: 'vigi_france_DB' }]
+});
 
-// Indexes
-db.credentials.createIndex({ email: 1 }, { unique: true });
+db.createUser({
+  user: 'mess_admin',
+  pwd: 'Messgspassword3124',
+  roles: [{ role: 'messagesRole', db: 'vigi_france_DB' }]
+});
 
-// Create collection and docs
-db.credentials.insertMany([
+
+
+// Create Collections
+db.createCollection("issues");
+db.createCollection("messages");
+db.createCollection("accounts");
+
+
+
+// Create Indexes
+db.accounts.createIndex({ email: 1 }, { unique: true });
+db.messages.createIndex({ issue_id: 1 }, { unique: true });
+
+
+
+
+// Add sample docs
+db.accounts.insertMany([
   { firstName: 'Dev', lastName: 'dev', email: 'dev.1@frVigilante.gouv.fr', password: '$2b$10$5jBqcbBc9Kequk827PlF3.ugBvVN0bUjYCtGW4vOTA.J4zgmwWBuS', created_at: new Date() }, // pswd: DEV1234!%
 
   { firstName: 'Admin', lastName: 'admin-1', email: 'admin.1@frVigilante.gouv.fr', password: '$2b$10$/QS4jDUeQbroWgZyL3xi2utJVmN7iZCwgQTSqKzwWKvaiEGs3WauS', created_at: new Date() }, // pswd: aDmin12345!
@@ -31,86 +83,26 @@ db.credentials.insertMany([
 
 
 
-// Maps DataBase
-db = db.getSiblingDB('maps');
-use('maps');
+// // Maps
 
-// Create Collections
-db.createCollection("issues");
-db.createCollection("messages");
+// // Create Collections
+// db.createCollection("issues");
+// db.createCollection("messages");
 
-// Create Indexes
-db.messages.createIndex({ issue_id: 1 }, { unique: true });
+// // Create Indexes
+// db.messages.createIndex({ issue_id: 1 }, { unique: true });
 
 
-// https://www.mongodb.com/docs/manual/reference/built-in-roles/
-// Create Roles
-db.createRole({ // ISSUES
-  role: 'accessIssueRole',
-  privileges: [
-    { resource: { db: 'maps', collection: 'issues' }, actions: ['find', 'insert'] }
-  ],
-  roles: []
-});
-// db.createRole({ // VOTES
-//   role: 'accessVotesRole',
+// // https://www.mongodb.com/docs/manual/reference/built-in-roles/
+// // Create Roles
+// db.createRole({ // ISSUES
+//   role: 'accessIssueRole',
 //   privileges: [
-//     { resource: { db: 'maps', collection: 'votes' }, actions: ['find', 'insert'] }
-//   ],
-//   roles: []
-// });
-// db.createRole({ // SOLVED VOTES
-//   role: 'accessSolvedVOTESRole',
-//   privileges: [
-//     { resource: { db: 'maps', collection: 'solved_votes' }, actions: ['find', 'insert'] }
-//   ],
-//   roles: []
-// });
-// db.createRole({ // COMMENTS
-//   role: 'accessCommentsRole',
-//   privileges: [
-//     { resource: { db: 'maps', collection: 'comments' }, actions: ['find', 'insert'] }
+//     { resource: { collection: 'issues' }, actions: ['find', 'insert'] }
 //   ],
 //   roles: []
 // });
 
-
-// Create user issues
-db.createUser({
-  user: 'issue_admin',
-  pwd: 'issuespassword3124',
-  roles: [
-    { role: 'readWrite', db: 'maps' },
-    { role: 'read', db: 'accounts', collection: 'credentials'}
-  ]
-});
-
-
-db.createUser({
-  user: 'mess_admin',
-  pwd: 'Messgspassword3124',
-  roles: [
-    { role: 'read', db: 'maps', collection: 'issues' },
-    { role: 'readWrite', db: 'maps', collection: 'messages' }
-  ]
-});
-
-
-// Create user votes
-// db.createUser({
-//   user: 'votes_admin',
-//   pwd: 'votespassword3124',
-//   roles: [
-//     { role: 'accessVotesRole', db: 'maps' },
-//     { role: 'accessIssueRole', db: 'maps' }
-//   ]
-// });
-
-// // Create Collection and docs
-// db.issues.insertMany([
-//   { test: "coucou"},
-//   { test: "coucou2"}
-// ])
 
 
 // // Create user issues
@@ -118,12 +110,18 @@ db.createUser({
 //   user: 'issue_admin',
 //   pwd: 'issuespassword3124',
 //   roles: [
-//     { role: 'accessIssueRole', db: 'maps' }
+//     { role: 'readWrite', db: 'vigi_france_DB', collection: 'issues' },
+//     { role: 'read', db: 'vigi_france_DB', collection: 'accounts' }
 //   ]
 // });
 
-// // Create Collection and docs
-// db.issues.insertMany([
-//   { test: "coucou"},
-//   { test: "coucou2"}
-// ])
+
+// db.createUser({
+//   user: 'mess_admin',
+//   pwd: 'Messgspassword3124',
+//   roles: [
+//     { role: 'read', db: 'vigi_france_DB', collection: 'issues' },
+//     { role: 'read', db: 'vigi_france_DB', collection: 'accounts' },
+//     { role: 'readWrite', db: 'vigi_france_DB', collection: 'messages' }
+//   ]
+// });

@@ -3,6 +3,7 @@ import { body_schema_validation } from "../middlewares/verify_schema";
 import { IssueCreate } from "../schemas/marker_sc";
 import { verify_access_token } from "../middlewares/verify_aToken";
 import { createIssue, getIssues } from "../models/marker_db";
+import { createMessagesDoc } from "../models/messages_db";
 
 export const router = Router();
 
@@ -29,10 +30,14 @@ router.get("/show", verify_access_token(false), async (req: Request, res: Respon
 
 router.post("/create", verify_access_token(true), body_schema_validation(IssueCreate), async (req: Request, res: Response) => {
     const issue = await createIssue(req.access_token_content as string, req.body);
-
     if (!issue) {
         res.sendStatus(409);
         return;
+    }
+
+    const messages = await createMessagesDoc(issue.id);
+    if (!messages) {
+        console.error("Error occured while trying to create document from 'Messages' Collection!");
     }
 
     res.status(201).send({

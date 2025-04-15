@@ -1,35 +1,18 @@
 import { Request, Response, Router } from "express";
 import { generate_AccessToken } from "../security/access_token";
-import { generate_RefreshToken } from "../security/refresh_token";
 import { verify_access_token } from "../middlewares/verify_aToken";
 import { verify_refresh_token } from "../middlewares/verify_rToken";
-import { createUser, getUser } from "../models/users_db";
+import { createUser, getUser, getUserById } from "../models/users_db";
 import { body_schema_validation } from "../middlewares/verify_schema";
 import { UserLogin, UserRegister } from "../schema/users_sc";
+import { cacheToken, deleteCacheToken } from "../models/refresh_cache";
 
 export const router = Router();
 
 
-async function createSession(res: Response, agent: string, userID: string, userName: string | null, refreshToken: string | null): Promise<Object> {
-    const access_token = generate_AccessToken(userID, agent as string);
 
-    // Create Cookie Access Token
-    res.cookie("Atk", access_token, {
-        expires: new Date(Date.now() + 60 * 60 * 1000), // 1 hour
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-    });
-
-    return {
-        "connected": true,
-        "user": userName,
-        "_rft": refreshToken,
-    };
-};
-
-async function createAccessCookie(res: Response, userID: string, agent: string) {
-    const access_token = generate_AccessToken(userID, agent as string);
+function createAccessCookie(res: Response, data_to_store: string, agent: string): string {
+    const access_token = generate_AccessToken(data_to_store, agent as string);
 
     // Create Cookie Access Token
     res.cookie("Atk", access_token, {
@@ -38,10 +21,12 @@ async function createAccessCookie(res: Response, userID: string, agent: string) 
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
     });
+
+    return access_token;
 }
 
 
-router.get("/", (req: Request, res: Response) => {
+router.get("/", (_: Request, res: Response) => {
     res.send("Auth endpoint.");
 })
 
@@ -50,6 +35,8 @@ router.get("/", (req: Request, res: Response) => {
  * @description Renouvelle le token d'authentification de l'utilisateur
  */
 router.post("/refresh", verify_refresh_token, async (req: Request, res: Response) => {
+    // Devrait utiliser le Access_Token: mais par manque de temps et surtout un problème de logique (comment gérer le multiplateforme si on peut créer seulement un refresh token par compte ??)
+
     // Renouvelle le token d'authentification de l'utilisateur à partir du token refresh
     const agent = req.headers["user-agent"];
     if (agent === undefined) {
@@ -57,9 +44,22 @@ router.post("/refresh", verify_refresh_token, async (req: Request, res: Response
         return;
     }
 
-    // TODO: A MODIFIER !!!
+    const user = await getUserById(req.refresh_token_content?.id as string);
+    if (! user) {
+        res.status(401).send("Invalid Refresh Token!");
+        return;
+    }
 
-    res.status(201).json(await createSession(res, agent as string, req.refresh_token_content as string, null, null));
+    req.session.resetMaxAge();
+
+    const access_token = createAccessCookie(res, user.id, agent as string);
+    res.status(200).json({
+        "created": false,
+        "user": user.id,
+        "email": user.email
+    })
+
+    // res.status(200).json(await createSession(res, agent as string, req.refresh_token_content as string, null, null));
 })
 
 /**
@@ -85,10 +85,17 @@ router.post("/register", body_schema_validation(UserRegister), async (req: Reque
         return;
     }
 
-    // Return Tokens
-    const refresh_token = generate_RefreshToken(user.id, agent as string);
+    req.session.connected = true;
+    req.session.lastName = user.lastName;
+    req.session.firstName = user.firstName;
+    req.session.save((err) => {
+        req.session.resetMaxAge();
+    });
 
-    await createAccessCookie(res, user.id, agent as string);
+    // Return Tokens
+    const access_token = createAccessCookie(res, user.id, agent as string);
+    const refresh_token = await cacheToken(user.id, access_token);
+
     res.status(200).json({
         "created": true,
         "user": user.id,
@@ -116,11 +123,17 @@ router.post("/login", body_schema_validation(UserLogin), async (req: Request, re
         return;
     };
 
-    // Return Tokens
-    const refresh_token = generate_RefreshToken(user.id, agent as string);
-    console.log("refresh", refresh_token);
+    req.session.connected = true;
+    req.session.lastName = user.lastName;
+    req.session.firstName = user.firstName;
+    req.session.save((err) => {
+        req.session.resetMaxAge();
+    });
 
-    await createAccessCookie(res, user.id, agent as string);
+    // Return Tokens
+    const access_token = createAccessCookie(res, user.id, agent as string);
+    const refresh_token = await cacheToken(user.id, access_token);
+
     res.status(200).json({
         "created": false,
         "user": user.id,
@@ -134,10 +147,15 @@ router.post("/login", body_schema_validation(UserLogin), async (req: Request, re
 /**
  *  Déconnexion de l'utilisateur
  */
-router.post("/logout", verify_access_token, async (req: Request, res: Response) => {
+router.post("/logout", verify_access_token, verify_refresh_token, async (req: Request, res: Response) => {
     // Détruit la Session
     res.clearCookie("Atk");
-    res.clearCookie("SID");
+    try {
+        await deleteCacheToken(req.refresh_token as string);
+    } catch {
+
+    };
+    req.session.destroy((err) => {});
 
     res.sendStatus(204);
 })

@@ -19,6 +19,9 @@ router.get("/profile", verify_access_token, async (req: Request, res: Response) 
         res.status(404).send("User not found");
         return;
     }
+    res.setHeader("Cache-Control", "no-store");
+
+    res.setHeader("Cache-Control", "no-store");
 
     res.status(200).json(user);
 });

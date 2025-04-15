@@ -3,22 +3,56 @@ import cors from 'cors';
 import morgan from 'morgan';
 import os from 'os';
 import cookieParser from 'cookie-parser';
-import messagesRouter from './endpoint/messages';
+import messagesRouter from './endpoints/messages';
 import { setupSocket } from './socket';
-import "./model/mongo-connector";
+import session from "express-session";
+import connectRedis from "connect-redis";
+import "./models/mongo-connector";
+import { redisClient } from './models/redis-connector';
 
 const app = express();
 const PORT = process.env["PORT"] || 3004;
 
-// Configuration CORS - spécifiez une origine précise ou ajustez le client pour ne pas utiliser withCredentials
+
+declare module "express-session" {
+    interface SessionData {
+        connected: boolean;
+        user_id: string;
+        firstName: string;
+        lastName: string;
+
+        last_pos_updated: string;
+
+        last_lat: number;
+        last_lng: number;
+    }
+}
+
+
+// Middlewares
 app.use(cors({
-    // origin: "*", // Ne fonctionne pas avec credentials: true
-    origin: true, // Réfléchit l'origine de la requête
-    credentials: true
+    "origin": "http://localhost:5173",
+    "credentials": true,
+    "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    "allowedHeaders": ["Content-Type", "Authorization"],
+    "exposedHeaders": ["Content-Type", "Authorization"]
 }));
 app.use(morgan("dev"));
 app.use(express.json());
 app.use(cookieParser());
+app.use(
+    session({
+        name: "SID",
+        store: new connectRedis.RedisStore({
+           client: redisClient
+        }),
+        secret: process.env.REDIS_SESSION_SECRET || 'your-secret-key', // Replace with a secure secret
+        resave: false,
+        saveUninitialized: false,
+        cookie: { sameSite: "lax", httpOnly: true, secure: process.env.NODE_ENV === "production" },
+    })
+);
+
 
 app.use('/messages', messagesRouter);
 
@@ -27,7 +61,7 @@ app.get('/', (req: Request, res: Response) => {
     return;
 });
 
-    // health check
+// health check
 app.get("/health", (req: Request, res: Response) => {
     res.setHeader("Cache-Control", "no-cache");
     // Understanding Health Check inside MicroServices (https://testfully.io/blog/api-health-check-monitoring/)

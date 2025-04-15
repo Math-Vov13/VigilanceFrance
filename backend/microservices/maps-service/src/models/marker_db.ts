@@ -41,7 +41,7 @@ export async function getIssues(): Promise<IIssue[] | null> {
 
 export async function createIssue(issuer_id: string, issueData: z.infer<typeof IssueCreate>): Promise<IIssue | null> {
     try {
-        const newIssue = IssuesModel.create({
+        const newIssue = await IssuesModel.create({
             ...issueData,
             reporter_id: issuer_id,
             votes: [{
