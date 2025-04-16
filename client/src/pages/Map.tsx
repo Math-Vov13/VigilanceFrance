@@ -3,13 +3,14 @@ import { Navbar } from '../components/layout/Navbar';
 import { IncidentMap } from '../components/map/IncidentMap';
 import { IncidentSidebar } from '../components/map/IncidentSidebar';
 import { IncidentFilters } from '../components/map/IncidentFilters';
-import { Incident, Comment, IncidentType } from '../types';
+import { Incident, IncidentType } from '../types';
 import { incidentTypes } from '../constants/constants';
 import { Badge } from '../components/ui/badge';
 import { Filter, X, Loader2 } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '../components/ui/sheet';
 import { Button } from '../components/ui/button';
 import { mapsApi } from '../services/api';
+import { useToast } from '@/components/ui/use-toast';
 
 export default function MapPage() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
@@ -19,10 +20,12 @@ export default function MapPage() {
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
   
   const fetchIncidents = useCallback(async (typeFilter: IncidentType | undefined = undefined) => {
     try {
       setIsLoading(true);
+      // Using the getIncidents method which now uses the correct endpoint
       const incidentData = await mapsApi.getIncidents(typeFilter);
       setIncidents(incidentData || []);
       setError(null);
@@ -68,45 +71,41 @@ export default function MapPage() {
   const handleAddIncident = useCallback(async (newIncident: Omit<Incident, 'id' | 'comments'>) => {
     try {
       setIsLoading(true);
+      // Using the createIncident method which uses /interactions/issues/create
       const incident = await mapsApi.createIncident(newIncident);
       setIncidents(prev => [...prev, incident]);
       setError(null);
+      
+      toast({
+        title: "Incident créé",
+        description: "L'incident a été ajouté avec succès.",
+        variant: "default"
+      });
     } catch (err) {
       console.error('Failed to create incident:', err);
       setError('Impossible de créer l\'incident. Veuillez réessayer plus tard.');
+      
+      toast({
+        title: "Erreur",
+        description: "Impossible de créer l'incident. Veuillez réessayer.",
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [toast]);
   
-  const handleAddComment = useCallback(async (incidentId: string, comment: Omit<Comment, 'id' | 'date'>) => {
-    const newComment = await mapsApi.addComment(incidentId, comment.text);
-    
-    setIncidents(prevIncidents => 
-      prevIncidents.map(incident => {
-        if (incident.id === incidentId) {
-          return {
-            ...incident,
-            comments: [...(incident.comments || []), newComment]
-          };
-        }
-        return incident;
-      })
-    );
-    
-    if (selectedIncident && selectedIncident.id === incidentId) {
-      const updatedIncident = incidents.find(i => i.id === incidentId);
-      if (updatedIncident) {
-        setSelectedIncident(updatedIncident);
-      }
-    }
-  }, [incidents, selectedIncident]);
+  // Note: We no longer need handleAddComment since comments are now handled via sockets
   
-  // Vote for an incident
   const handleUpvote = useCallback(async (incidentId: string) => {
     try {
-      await mapsApi.upvoteIncident(incidentId);
+      // Using the addVote method which now uses /interactions/votes/vote
+      const response = await mapsApi.addVote(incidentId);
+      const { vote_id } = response;
       
+      if (!vote_id) {
+        throw new Error('No vote_id returned from the API');
+      }
       setIncidents(prevIncidents => 
         prevIncidents.map(incident => {
           if (incident.id === incidentId) {
@@ -125,18 +124,29 @@ export default function MapPage() {
           upvotes: (selectedIncident.upvotes ?? 0) + 1
         });
       }
+      
+      toast({
+        title: "Vote enregistré",
+        description: "Votre vote a été enregistré avec succès.",
+        variant: "default"
+      });
     } catch (err) {
-      console.error('Failed to upvote:', err);
-      setError('Impossible de voter. Veuillez réessayer plus tard.');
+      console.error('Failed to upvote incident:', err);
+      
+      toast({
+        title: "Erreur",
+        description: "Impossible d'ajouter votre vote. Veuillez réessayer.",
+        variant: "destructive"
+      });
     }
-  }, [selectedIncident]);
+  }, [selectedIncident, toast]);
   
-  // Mark incident as solved
   const handleMarkAsSolved = useCallback(async (incidentId: string) => {
     try {
-      const success = await mapsApi.markAsSolved(incidentId);
+      // Using the markAsSolved method which now uses /interactions/solved/vote
+      const result = await mapsApi.markAsSolved(incidentId);
       
-      if (success) {
+      if (result && result.solved) {
         setIncidents(prevIncidents => 
           prevIncidents.map(incident => {
             if (incident.id === incidentId) {
@@ -152,58 +162,62 @@ export default function MapPage() {
             status: 'resolved' as Incident['status']
           });
         }
+        
+        toast({
+          title: "Incident résolu",
+          description: "L'incident a été marqué comme résolu.",
+          variant: "default"
+        });
       }
     } catch (err) {
       console.error('Failed to mark as solved:', err);
-      setError('Impossible de marquer comme résolu. Veuillez réessayer plus tard.');
+      
+      toast({
+        title: "Erreur",
+        description: "Impossible de marquer l'incident comme résolu. Veuillez réessayer.",
+        variant: "destructive"
+      });
     }
-  }, [selectedIncident]);
+  }, [selectedIncident, toast]);
   
-  // Like a comment
-  const handleLikeComment = useCallback((incidentId: string, commentId: string) => {
-    mapsApi.likeComment(incidentId, commentId);
-    
-    setIncidents(prevIncidents => 
-      prevIncidents.map(incident => {
-        if (incident.id === incidentId) {
-          return {
-            ...incident,
-            comments: (incident.comments || []).map(comment => {
-              if (comment.id === commentId) {
-                return { ...comment, likes: (comment.likes ?? 0) + 1 };
-              }
-              return comment;
-            })
-          };
-        }
-        return incident;
-      })
-    );
-  }, []);
+  // Like a comment - This is now just an API call without updating local state
+  // since comments are managed by the socket
+  const handleLikeComment = useCallback(async (incidentId: string, commentId: string) => {
+    try {
+      await mapsApi.likeComment(incidentId, commentId);
+      // State updates are now handled by the socket connection
+    } catch (err) {
+      console.error('Failed to like comment:', err);
+      
+      toast({
+        title: "Erreur",
+        description: "Impossible d'aimer ce commentaire. Veuillez réessayer.",
+        variant: "destructive"
+      });
+    }
+  }, [toast]);
   
-  // Report a comment
-  const handleReportComment = useCallback((incidentId: string, commentId: string) => {
-    mapsApi.reportComment(incidentId, commentId);
-    
-    setIncidents(prevIncidents => 
-      prevIncidents.map(incident => {
-        if (incident.id === incidentId) {
-          return {
-            ...incident,
-            comments: (incident.comments || []).map(comment => {
-              if (comment.id === commentId) {
-                return { ...comment, reported: true };
-              }
-              return comment;
-            })
-          };
-        }
-        return incident;
-      })
-    );
-    
-    alert('Commentaire signalé aux modérateurs. Merci de votre vigilance!');
-  }, []);
+  // Report a comment - This is now just an API call without updating local state
+  const handleReportComment = useCallback(async (incidentId: string, commentId: string) => {
+    try {
+      await mapsApi.reportComment(incidentId, commentId);
+      // State updates are now handled by the socket connection
+      
+      toast({
+        title: "Commentaire signalé",
+        description: "Le commentaire a été signalé aux modérateurs. Merci de votre vigilance!",
+        variant: "default"
+      });
+    } catch (err) {
+      console.error('Failed to report comment:', err);
+      
+      toast({
+        title: "Erreur",
+        description: "Impossible de signaler ce commentaire. Veuillez réessayer.",
+        variant: "destructive"
+      });
+    }
+  }, [toast]);
   
   const safeIncidents = incidents ?? [];
   
@@ -310,13 +324,12 @@ export default function MapPage() {
           />
         </div>
         
-        {/* Incident details sidebar - conditionally rendered */}
+        {/* Incident details sidebar with socket-based comments */}
         {sidebarOpen && selectedIncident && (
           <div className="absolute md:relative right-0 top-0 bottom-0 w-full md:w-96 z-20 max-h-screen overflow-hidden">
             <IncidentSidebar 
               incident={selectedIncident}
               onClose={handleSidebarClose}
-              onAddComment={handleAddComment}
               onLikeComment={handleLikeComment}
               onReportComment={handleReportComment}
               onUpvote={handleUpvote}
@@ -327,4 +340,4 @@ export default function MapPage() {
       </div>
     </div>
   );
-}
+};

@@ -1,16 +1,13 @@
 import { useState } from 'react';
-import { Comment, Incident } from '../../types';
+import { Incident } from '../../types';
 import { Button } from '../ui/button';
-import { X, MapPin, Clock, ArrowUp, Share2, CheckCircle } from 'lucide-react';
+import { X, MapPin, ArrowUp, Share2, CheckCircle } from 'lucide-react';
 import { CommentSection } from './CommentSection';
 import { incidentTypes, severityLevels } from '../../constants/constants';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
 
 interface IncidentSidebarProps {
   incident: Incident;
   onClose: () => void;
-  onAddComment: (incidentId: string, comment: Omit<Comment, 'id' | 'date'>) => void;
   onLikeComment?: (incidentId: string, commentId: string) => void;
   onReportComment?: (incidentId: string, commentId: string) => void;
   onUpvote?: (incidentId: string) => void;
@@ -20,7 +17,6 @@ interface IncidentSidebarProps {
 export function IncidentSidebar({ 
   incident, 
   onClose,
-  onAddComment,
   onLikeComment,
   onReportComment,
   onUpvote,
@@ -42,26 +38,6 @@ export function IncidentSidebar({
     label: 'Inconnu',
     color: '#9E9E9E'
   };
-  
-  // Format date
-  // Updated formatDate function with proper error handling for IncidentSidebar.tsx
-const formatDate = (dateString: string) => {
-  try {
-    if (!dateString || dateString === 'Invalid Date') {
-      return 'Date inconnue';
-    }
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) {
-      return 'Date invalide';
-    }
-    
-    return format(date, 'PPpp', { locale: fr });
-  } catch (error) {
-    console.error('Error formatting date:', error);
-    return 'Date inconnue';
-  }
-};
-  
   const handleUpvote = () => {
     if (onUpvote && !hasVoted) {
       onUpvote(incident.id);
@@ -164,10 +140,6 @@ const formatDate = (dateString: string) => {
               <span>{incident.location}</span>
             </div>
             
-            <div className="flex items-center">
-              <Clock className="h-4 w-4 mr-2" />
-              <span>{formatDate(incident.date)}</span>
-            </div>
           </div>
           
           {/* Images if available */}
@@ -236,6 +208,30 @@ const formatDate = (dateString: string) => {
                     <li>
                       <button 
                         className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                        onClick={() => handleShare('copy')}
+                      >
+                        Copier le lien
+                      </button>
+                    </li>
+                    <li>
+                      <button 
+                        className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                        onClick={() => handleShare('twitter')}
+                      >
+                        Twitter
+                      </button>
+                    </li>
+                    <li>
+                      <button 
+                        className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                        onClick={() => handleShare('facebook')}
+                      >
+                        Facebook
+                      </button>
+                    </li>
+                    <li>
+                      <button 
+                        className="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
                         onClick={() => handleShare('whatsapp')}
                       >
                         WhatsApp
@@ -247,11 +243,9 @@ const formatDate = (dateString: string) => {
             </div>
           </div>
           
-          {/* Comments section */}
+          {/* Socket-based Comments section */}
           <CommentSection 
-            comments={incident.comments}
             incidentId={incident.id}
-            onAddComment={onAddComment}
             onLikeComment={onLikeComment}
             onReportComment={onReportComment}
           />

@@ -1,28 +1,30 @@
-// Updated CommentSection component with proper safety checks
 import { useState } from 'react';
-import { Comment } from '../../types';
 import { Button } from '../ui/button';
-import { ThumbsUp, Flag } from 'lucide-react';
+import { ThumbsUp, Flag, AlertCircle, Loader2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useSocketComments } from '../../hooks/useSocketComment';
+import { Alert, AlertDescription } from '../ui/alert';
 
 interface CommentSectionProps {
   incidentId: string;
-  comments?: Comment[];
-  onAddComment: (incidentId: string, comment: Omit<Comment, 'id' | 'date'>) => void;
   onLikeComment?: (incidentId: string, commentId: string) => void;
   onReportComment?: (incidentId: string, commentId: string) => void;
 }
 
 export function CommentSection({
   incidentId,
-  comments = [], // Provide a default empty array
-  onAddComment,
   onLikeComment,
   onReportComment
 }: CommentSectionProps) {
   const [commentText, setCommentText] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const {
+    comments,
+    isConnected,
+    error,
+    loading,
+    sendComment
+  } = useSocketComments(incidentId);
   
   // Safely format the relative time
   const formatRelativeTime = (dateString: string) => {
@@ -45,19 +47,11 @@ export function CommentSection({
     
     if (!commentText.trim()) return;
     
-    setIsSubmitting(true);
-    
     try {
-      onAddComment(incidentId, {
-        text: commentText.trim(),
-        user: 'Utilisateur',
-        likes: 0,
-        reported: false
-      });
-      
+      sendComment(commentText.trim());
       setCommentText('');
-    } finally {
-      setIsSubmitting(false);
+    } catch (error) {
+      console.error('Error sending comment:', error);
     }
   };
   
@@ -82,78 +76,98 @@ export function CommentSection({
     <div>
       <h3 className="text-lg font-semibold mb-4">Commentaires ({safeComments.length})</h3>
       
-      {/* Comment list */}
-      {safeComments.length > 0 ? (
-        <div className="space-y-4 mb-6">
-          {safeComments.map(comment => (
-            <div 
-              key={comment.id} 
-              className={`p-3 rounded-lg ${
-                comment.reported 
-                  ? 'bg-gray-100 text-gray-500' 
-                  : 'bg-gray-100'
-              }`}
-            >
-              {comment.reported ? (
-                <p className="text-sm italic">Ce commentaire a été signalé et est en attente de modération.</p>
-              ) : (
-                <>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="font-medium">{comment.user || 'Utilisateur'}</p>
-                      <p className="text-sm text-gray-500">
-                        {comment.date ? formatRelativeTime(comment.date) : 'il y a un moment'}
-                      </p>
-                    </div>
-                    
-                    <div className="flex items-center space-x-2">
-                      <button 
-                        className="text-gray-500 hover:text-blue-600"
-                        onClick={() => handleLike(comment.id)}
-                      >
-                        <ThumbsUp className="h-4 w-4" />
-                      </button>
-                      
-                      <span className="text-sm">{comment.likes || 0}</span>
-                      
-                      <button 
-                        className="text-gray-500 hover:text-red-600"
-                        onClick={() => handleReport(comment.id)}
-                      >
-                        <Flag className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                  
-                  <p className="mt-2">{comment.text}</p>
-                </>
-              )}
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="text-gray-500 mb-6">Aucun commentaire pour le moment.</p>
+      {error && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
       
-      {/* Add comment form */}
-      <form onSubmit={handleSubmit}>
-        <div className="space-y-3">
-          <textarea
-            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="Ajouter un commentaire..."
-            rows={3}
-            value={commentText}
-            onChange={(e) => setCommentText(e.target.value)}
-          />
-          
-          <Button 
-            type="submit"
-            disabled={isSubmitting || !commentText.trim()}
-          >
-            {isSubmitting ? 'Envoi...' : 'Commenter'}
-          </Button>
+      {loading ? (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <span className="ml-2">Chargement des commentaires...</span>
         </div>
-      </form>
+      ) : (
+        <>
+          {/* Comment list */}
+          {safeComments.length > 0 ? (
+            <div className="space-y-4 mb-6">
+              {safeComments.map(comment => (
+                <div 
+                  key={comment.id} 
+                  className={`p-3 rounded-lg ${
+                    comment.reported 
+                      ? 'bg-gray-100 text-gray-500' 
+                      : 'bg-gray-100'
+                  }`}
+                >
+                  {comment.reported ? (
+                    <p className="text-sm italic">Ce commentaire a été signalé et est en attente de modération.</p>
+                  ) : (
+                    <>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="font-medium">{comment.user || 'Utilisateur'}</p>
+                          <p className="text-sm text-gray-500">
+                            {comment.date ? formatRelativeTime(comment.date) : 'il y a un moment'}
+                          </p>
+                        </div>
+                        
+                        <div className="flex items-center space-x-2">
+                          <button 
+                            className="text-gray-500 hover:text-blue-600"
+                            onClick={() => handleLike(comment.id)}
+                          >
+                            <ThumbsUp className="h-4 w-4" />
+                          </button>
+                          
+                          <span className="text-sm">{comment.likes || 0}</span>
+                          
+                          <button 
+                            className="text-gray-500 hover:text-red-600"
+                            onClick={() => handleReport(comment.id)}
+                          >
+                            <Flag className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <p className="mt-2">{comment.text}</p>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500 mb-6">Aucun commentaire pour le moment.</p>
+          )}
+          
+          {/* Add comment form */}
+          <form onSubmit={handleSubmit}>
+            <div className="space-y-3">
+              <textarea
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Ajouter un commentaire..."
+                rows={3}
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+              />
+              
+              <Button 
+                type="submit"
+                disabled={!isConnected || !commentText.trim()}
+              >
+                {!isConnected ? 'Connexion...' : 'Commenter'}
+              </Button>
+              
+              {!isConnected && !loading && (
+                <p className="text-sm text-amber-600">Tentative de connexion au serveur de commentaires...</p>
+              )}
+            </div>
+          </form>
+        </>
+      )}
     </div>
   );
 }

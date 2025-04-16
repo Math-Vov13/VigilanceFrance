@@ -20,8 +20,14 @@ router.get("/profile", verify_access_token, async (req: Request, res: Response) 
         return;
     }
     res.setHeader("Cache-Control", "no-store");
-
-    res.setHeader("Cache-Control", "no-store");
-
-    res.status(200).json(user);
+    res.status(200).json({
+        success: true,
+        message: "Profile retrieved successfully",
+        data: {
+            id: user.id,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email,
+        }
+    });
 });

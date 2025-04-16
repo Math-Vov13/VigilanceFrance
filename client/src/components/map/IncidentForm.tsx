@@ -6,7 +6,7 @@ import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../ui/dialog';
 import { incidentTypes, severityLevels } from '../../constants/constants';
-import { Incident, Coordinates } from '../../types';
+import { Incident, Coordinates, IncidentType, IncidentSeverity } from '../../types';
 import { MapPin, AlertCircle } from 'lucide-react';
 
 interface IncidentFormProps {
@@ -14,6 +14,8 @@ interface IncidentFormProps {
   onClose: () => void;
   onSubmit: (incident: Omit<Incident, 'id' | 'comments'>) => void;
   initialCoordinates?: Coordinates;
+  initialType?: IncidentType;
+  initialSeverity?: IncidentSeverity;
   initialAddress?: string;
 }
 
@@ -21,17 +23,18 @@ export function IncidentForm({
   open, 
   onClose, 
   onSubmit, 
-  initialCoordinates, 
+  initialCoordinates,
+  initialSeverity,
+  initialType, 
   initialAddress = '' 
 }: IncidentFormProps) {
   const [formData, setFormData] = useState<Omit<Incident, 'id' | 'comments'>>({
-    type: '',
+    type: initialType || incidentTypes[0].value,
     title: '',
     description: '',
     location: '',
-    date: new Date().toISOString(),
     coordinates: initialCoordinates || { lat: 0, lng: 0 },
-    severity: 'moyen',
+    severity: initialSeverity || severityLevels[0].value
   });
 
   useEffect(() => {
@@ -77,7 +80,7 @@ export function IncidentForm({
     
     onSubmit({
       ...formData,
-      date: formData.date || new Date().toISOString(),
+      coordinates: formData.coordinates || { lat: 0, lng: 0 },
     });
     onClose();
   };

@@ -22,8 +22,10 @@ export interface AuthContextType {
 
 export interface Comment {
   id: string;
-  user: string;
   text: string;
+  user: string; 
+  firstName?: string;
+  lastName?: string; 
   date: string;
   likes?: number;
   reported?: boolean;
@@ -35,16 +37,14 @@ export interface Coordinates {
 }
 export interface Incident {
   id: string;
-  type: string;              
+  type: IncidentType;              
   title: string;             
   description: string;        
   location: string;           
-  coordinates: Coordinates;
-  date: string;                
+  coordinates: Coordinates;               
   status?: IncidentStatus;
   severity: IncidentSeverity;                
-  upvotes?: number;           
-  downvotes?: number;         
+  upvotes?: number;                 
   comments: Comment[];        
   imageUrls?: string[];      
 }
@@ -90,4 +90,23 @@ export interface IncidentStatusInfo {
   value: IncidentStatus;
   label: string;
   color: string;
+}
+
+export interface SocketMessage {
+  _id: string;
+  issue_id: string;
+  user_id: string;
+  firstName: string;
+  lastName: string;
+  message: string;
+  created_at: string;
+  likes?: number;
+  reported?: boolean;
+}
+
+export interface MessagesDocument {
+  connected: boolean;
+  id: string;
+  length: number;
+  messages: SocketMessage[];
 }
