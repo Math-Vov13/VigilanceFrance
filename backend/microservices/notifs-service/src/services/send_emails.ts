@@ -21,15 +21,16 @@ emailQueue.process(async (job: Bull.Job<z.infer<typeof email_queue_schema>>) => 
     console.log(`Processing job for ${job.data.emails}`);
 
     const email = await sendEmail(job.data.emails, job.data.title, job.data.content, job.data.htmlversion)
-
     console.log(`Email sent to ${job.data.emails}`);
     console.debug("Email details:", email);
+
+    return email;
 });
 
 export async function sendEmail(emails: Array<string>, subject: string | null, content: string | null, html: string | null): Promise<SMTPTransport.SentMessageInfo | null> {
     try {
         const info = await transporter.sendMail({
-            from: '"Fred Foo 👻" <foo@example.com>',
+            from: '"No-Reply VigilanceFrance 🌍" <no-reply@vgfrance.gouv.fr>',
             to: emails.join(", "),
             subject: subject || "Hello 👋",
             text: content || "Oops, You have received a test email :(",

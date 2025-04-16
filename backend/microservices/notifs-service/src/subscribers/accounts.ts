@@ -16,11 +16,11 @@ redisClient.subscribe(WELCOME_CHANNEL, async (data) => {
         await emailQueue.add({
             "emails": [parsed_data.email],
             "title": "Welcome from VigilanceFrance!",
-            "content":  `Hello **${parsed_data.lastName}** ${parsed_data.firstName}! You've juste created your account. Happy to see you :)`,
+            "content":  `Hello **${parsed_data.lastName}** ${parsed_data.firstName}! You've just created your account. Happy to see you :)`,
             "htmlversion": "<b>Test Message</b>"
         })
 
-        // const email = await sendEmail([parsed_data.email], "Welcome from VigilanceFrance!", `Hello **${parsed_data.lastName}** ${parsed_data.firstName}! You've juste created your account. Happy to see you :)`)
+        // const email = await sendEmail([parsed_data.email], "Welcome from VigilanceFrance!", `Hello **${parsed_data.lastName}** ${parsed_data.firstName}! You've just created your account. Happy to see you :)`)
         
         // console.debug("Email details:", email);
 
