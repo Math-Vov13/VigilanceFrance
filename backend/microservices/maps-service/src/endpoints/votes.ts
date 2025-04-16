@@ -2,9 +2,11 @@ import { Request, Response, Router } from "express";
 import { verify_access_token } from "../middlewares/verify_aToken";
 import { verify_issue_id } from "../middlewares/verify_issue_query";
 import { createVote, getVotes_byIssueId, removeVote } from "../models/votes_db";
+import { redisClient } from "../models/redis-connector";
 
 export const router = Router();
 
+const VOTE_ADDED_CHANNEL = "new_vote";
 
 
 router.get("/", (req: Request, res: Response) => {
@@ -52,6 +54,12 @@ router.post("/vote", verify_access_token(true), verify_issue_id, async (req: Req
         res.status(409).send("You have already an active vote for this issue!");
         return;
     }
+
+    // PUB EVENT (new vote)
+    await redisClient.publish(VOTE_ADDED_CHANNEL, JSON.stringify({
+        "issue_id": issue_id,
+        "user_id": req.access_token_content
+    }))
 
     res.status(201).json({
         "user_id": req.access_token_content,

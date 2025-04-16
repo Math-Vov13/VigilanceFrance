@@ -1,12 +1,12 @@
 import { Server, Socket } from "socket.io";
-import { addMessage, getMessagesByMarkID } from './models/db_messages'; //  get ALL Messages: optionnel (ligne  115)
+import { addMessage } from './models/db_messages'; //  get ALL Messages: optionnel (ligne  115)
 import http from 'http';
 import { decode_AccessToken } from "./security/jwt";
-import "./models/mongo-connector";
 import { createMessage } from "./schemas/message_sc";
 import { Request } from "express";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
+import { redisClient } from "./models/redis-connector";
 
 
 export function extractUserFromSocket(socket: Socket) {
@@ -26,8 +26,6 @@ export function extractUserFromSocket(socket: Socket) {
 }
 
 
-const JWT_SECRET = process.env.ACCESSTOKEN_SECRET_KEY || 'access_token_secret_key';
-
 interface tkPL { //token PayLoad
   userId: string;
   username: string;
@@ -37,6 +35,8 @@ interface tkPL { //token PayLoad
 }
 
 const activeUsers = new Map<string, string>(); // userid & socketid
+const INCOMING_MESSAGE_CHANNEL = "new_message";
+
 
 export function setupSocket(server: http.Server) {
   const io = new Server(server, {
@@ -149,6 +149,10 @@ export function setupSocket(server: http.Server) {
 
       if (issue_id) {
         const mess = await addMessage(issue_id, socket.data.user_id, session.lastName as string, session.firstName as string, newMessage.message);
+
+        // PUB EVENT (add message)
+        await redisClient.publish(INCOMING_MESSAGE_CHANNEL, JSON.stringify(mess));
+
         io.to(issue_id).emit("message", mess);
       }
     });
