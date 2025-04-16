@@ -59,7 +59,7 @@ app.use(
 // ENDPOINTS
 app.use('/v1/auth', rate_limiter(redisClient as RedisClientType, "4r/1s"), no_health_check, createProxyMiddleware({ target: 'http://auth-service:80', changeOrigin: true }));
 app.use('/v1/maps', rate_limiter(redisClient as RedisClientType, "6r/1s"), no_health_check, createProxyMiddleware({ target: 'http://maps-service:80', changeOrigin: true }));
-app.use('/v1/mess', rate_limiter(redisClient as RedisClientType, "10r/1s"), no_health_check, createProxyMiddleware({ target: 'http://mess-service:80', changeOrigin: true }));
+app.use('/v1/mess', rate_limiter(redisClient as RedisClientType, "10r/1s"), no_health_check, createProxyMiddleware({ target: 'http://mess-service:80', changeOrigin: true , ws: true}));
 app.use('/v1/notifs', rate_limiter(redisClient as RedisClientType, "5r/1s"), no_health_check, createProxyMiddleware({ target: 'http://notifs-service:80', changeOrigin: true }));
 
 app.use('/v1/user-status/', rate_limiter(redisClient as RedisClientType, "3r/15s"), routerUpt);
