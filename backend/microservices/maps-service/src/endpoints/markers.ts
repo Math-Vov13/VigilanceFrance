@@ -4,9 +4,11 @@ import { IssueCreate } from "../schemas/marker_sc";
 import { verify_access_token } from "../middlewares/verify_aToken";
 import { createIssue, getIssues } from "../models/marker_db";
 import { createMessagesDoc } from "../models/messages_db";
+import { redisClient } from "../models/redis-connector";
 
 export const router = Router();
 
+const CREATE_ISSUE_CHANNEL = "create_issue";
 
 
 router.get("/", (req: Request, res: Response) => {
@@ -39,6 +41,9 @@ router.post("/create", verify_access_token(true), body_schema_validation(IssueCr
     if (!messages) {
         console.error("Error occured while trying to create document from 'Messages' Collection!");
     }
+
+    // PUB EVENT (create issue)
+    redisClient.publish(CREATE_ISSUE_CHANNEL, JSON.stringify(issue));
 
     res.status(201).send({
         "created": true,

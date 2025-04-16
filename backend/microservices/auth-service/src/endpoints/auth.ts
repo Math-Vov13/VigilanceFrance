@@ -6,9 +6,12 @@ import { createUser, getUser, getUserById } from "../models/users_db";
 import { body_schema_validation } from "../middlewares/verify_schema";
 import { UserLogin, UserRegister } from "../schema/users_sc";
 import { cacheToken, deleteCacheToken } from "../models/refresh_cache";
+import { redisClient } from "../models/redis-connector";
 
 export const router = Router();
 
+const WELCOME_CHANNEL = "new_user";
+const NEW_CONNECION_CHANNEL = "new_connection_to_account";
 
 
 function createAccessCookie(res: Response, data_to_store: string, agent: string): string {
@@ -85,6 +88,15 @@ router.post("/register", body_schema_validation(UserRegister), async (req: Reque
         return;
     }
 
+    // PUB EVENT (new user)
+    await redisClient.publish(WELCOME_CHANNEL, JSON.stringify({
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        address: req.ip,
+        created_at: user.created_at,
+    }));
+
     req.session.connected = true;
     req.session.lastName = user.lastName;
     req.session.firstName = user.firstName;
@@ -122,6 +134,15 @@ router.post("/login", body_schema_validation(UserLogin), async (req: Request, re
         res.status(404).send("Invalid email or password");
         return;
     };
+
+    // PUB EVENT (new connection to account!)
+    await redisClient.publish(NEW_CONNECION_CHANNEL, JSON.stringify({
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        address: req.ip,
+        created_at: user.created_at,
+    }));
 
     req.session.connected = true;
     req.session.lastName = user.lastName;

@@ -4,9 +4,12 @@ import { verify_issue_id } from "../middlewares/verify_issue_query";
 import { createSolvedVote, getSolvedVotes_byIssueId, removeSolvedVote } from "../models/solved_db";
 import { getVotes_byIssueId } from "../models/votes_db";
 import { solvedIssue } from "../models/marker_db";
+import { redisClient } from "../models/redis-connector";
 
 export const router = Router();
 
+const ISSUE_SOLVED_CHANNEL = "issue_solved";
+const SOLVED_VOTE_ADDED_CHANNEL = "new_solved_vote";
 
 
 router.get("/", (req: Request, res: Response) => {
@@ -68,23 +71,36 @@ router.post("/vote", verify_access_token(true), verify_issue_id, async (req: Req
         return;
     }
 
+    let issue_solved = false;
+
     const votes = await getVotes_byIssueId(issue_id as string);
     const solved_votes = await getSolvedVotes_byIssueId(issue_id as string);
 
-    if ((votes.length / 2)+1 < solved_votes.length) {
+    // PUB EVENT (add solved vote)
+    await redisClient.publish(SOLVED_VOTE_ADDED_CHANNEL, JSON.stringify({
+        "issue_id": issue_id,
+        "user_id": req.access_token_content
+    }))
+
+    const is_reporter = (vote.reporter_id === req.access_token_content)
+    const set_as_solved = (votes.length / 2)+5 <= solved_votes.length // -> minimum 5 votes 'résoluts'
+    if (is_reporter || set_as_solved) {
         // Delete Issue by Socialism!
         await solvedIssue(issue_id as string);
 
-        res.status(201).json({
-            "solved": true,
-            "user_id": req.access_token_content,
+        // PUB EVENT (issue solved)
+        await redisClient.publish(ISSUE_SOLVED_CHANNEL, JSON.stringify({
             "issue_id": issue_id,
-            "vote_id": vote.id
-        })
+            "user_id": req.access_token_content,
+            "nbr_votes": votes.length,
+            "nrb_solved": solved_votes.length
+        }))
+
+        issue_solved = true;
     }
 
     res.status(201).json({
-        "solved": false,
+        "solved": issue_solved,
         "user_id": req.access_token_content,
         "issue_id": issue_id,
         "vote_id": vote.id

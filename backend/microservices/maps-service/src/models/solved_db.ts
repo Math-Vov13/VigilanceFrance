@@ -44,27 +44,27 @@ export async function getSolvedVotes_byIssueId(issue_id: string): Promise<any | 
 
 export async function createSolvedVote(user_id: string, issue_id: string): Promise<IIssue | null> {
     try {
-        // Trouvez l'issue par son ID
+        // Trouver l'issue par son ID
         const issue = await IssuesModel.findById(issue_id);
 
         if (!issue) {
             return null;
         }
 
-        // Vérifiez si l'utilisateur a déjà voté
+        // Vérifier si l'utilisateur a déjà voté
         const hasVoted = issue.solved.some(vote => vote.user_id === user_id);
 
         if (hasVoted) {
             return null;
         }
 
-        // Ajoutez un vote au document spécifié
+        // Ajouter un vote au document spécifié
         issue.solved.push({
             user_id: user_id,
             created_at: new Date()
         });
 
-        // Enregistrez le document mis à jour
+        // Enregistrer le document mis à jour
         const updatedIssue = await issue.save();
         return updatedIssue;
 

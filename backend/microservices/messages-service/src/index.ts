@@ -7,8 +7,8 @@ import messagesRouter from './endpoints/messages';
 import { setupSocket } from './socket';
 import session from "express-session";
 import connectRedis from "connect-redis";
-import "./models/mongo-connector";
 import { redisClient } from './models/redis-connector';
+import "./models/mongo-connector";
 
 const app = express();
 const PORT = process.env["PORT"] || 3004;

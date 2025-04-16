@@ -3,6 +3,14 @@ import cors from 'cors';
 import morgan from 'morgan';
 import os from 'os';
 
+// Subscribers
+import "./subscribers/accounts";
+import "./subscribers/issues";
+import "./subscribers/messages";
+import "./subscribers/votes";
+import "./services/send_emails";
+import "./services/send_sms";
+
 // Vars
 const app = express();
 const PORT = process.env["PORT"] || 3005;
@@ -48,11 +56,11 @@ app.get("/health", (req: Request, res: Response) => {
 // Server Listen
 const server = app.listen(PORT, (err) => {
     if (err !== undefined) {
-        console.error("[server]: Error while running server:", err);
+        console.error(`[${process.env.TAG || 'server'}]: Error while running server:`, err);
         return;
     }
 
-    console.log(`[server]: Running Server on http://localhost:${PORT}`);
+    console.log(`[${process.env.TAG || 'server'}]: Running Server on http://localhost:${PORT}`);
 });
 
 
@@ -61,5 +69,6 @@ process.on("SIGTERM", () => {
     console.debug('SIGTERM signal received: closing HTTP server');
     server.close(() => {
         console.debug('HTTP server closed!');
+        console.log(`[${process.env.TAG || 'server'}]: Server closed!`);
     })
 })
