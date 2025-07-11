@@ -34,7 +34,7 @@ declare module "express-session" {
 // Middlewares
 app.use(morgan("combined"));
 app.use(cors({
-    "origin": "http://localhost:5173",
+    "origin": "http://localhost:3000",
     "credentials": true,
     "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     "allowedHeaders": ["Content-Type", "Authorization"],
@@ -51,7 +51,7 @@ app.use(
         secret: process.env.REDIS_SESSION_SECRET || 'your-secret-key', // Replace with a secure secret
         resave: false,
         saveUninitialized: true,
-        cookie: { sameSite: "lax", httpOnly: true, secure: process.env.NODE_ENV === "production", maxAge: 5*60*1000 }, // path: "http://localhost:5173"
+        cookie: { sameSite: "lax", httpOnly: true, secure: process.env.NODE_ENV === "production", maxAge: 5*60*1000 }, // path: "http://localhost:3000"
     })
 );
 

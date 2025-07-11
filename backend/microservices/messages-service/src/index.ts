@@ -5,10 +5,9 @@ import os from 'os';
 import cookieParser from 'cookie-parser';
 import messagesRouter from './endpoints/messages';
 import { setupSocket } from './socket';
-import session from "express-session";
-import connectRedis from "connect-redis";
-import { redisClient } from './models/redis-connector';
+
 import "./models/mongo-connector";
+import { sessionMiddleware } from './sessionStorage';
 
 const app = express();
 const PORT = process.env["PORT"] || 3004;
@@ -31,7 +30,7 @@ declare module "express-session" {
 
 // Middlewares
 app.use(cors({
-    "origin": "http://localhost:5173",
+    "origin": "http://localhost:3000",
     "credentials": true,
     "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     "allowedHeaders": ["Content-Type", "Authorization"],
@@ -41,16 +40,17 @@ app.use(morgan("dev"));
 app.use(express.json());
 app.use(cookieParser());
 app.use(
-    session({
-        name: "SID",
-        store: new connectRedis.RedisStore({
-           client: redisClient
-        }),
-        secret: process.env.REDIS_SESSION_SECRET || 'your-secret-key', // Replace with a secure secret
-        resave: false,
-        saveUninitialized: false,
-        cookie: { sameSite: "lax", httpOnly: true, secure: process.env.NODE_ENV === "production" },
-    })
+    sessionMiddleware
+    // session({
+    //     name: "SID",
+    //     store: new connectRedis.RedisStore({
+    //        client: redisClient
+    //     }),
+    //     secret: process.env.REDIS_SESSION_SECRET || 'your-secret-key', // Replace with a secure secret
+    //     resave: false,
+    //     saveUninitialized: false,
+    //     cookie: { sameSite: "lax", httpOnly: true, secure: process.env.NODE_ENV === "production" },
+    // })
 );
 
 

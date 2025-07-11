@@ -27,7 +27,8 @@ db.createRole({ // MESSAGES
   role: 'messagesRole',
   privileges: [
     { resource: { db: 'vigi_france_DB', collection: 'messages' }, actions: ['find', 'insert', 'update', 'remove'] },
-    { resource: { db: 'vigi_france_DB', collection: 'issues' }, actions: ['find'] }
+    { resource: { db: 'vigi_france_DB', collection: 'issues' }, actions: ['find'] },
+    { resource: { db: 'vigi_france_DB', collection: 'accounts' }, actions: ['find'] }
   ],
   roles: []
 });

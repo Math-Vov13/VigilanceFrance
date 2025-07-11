@@ -62,7 +62,7 @@ export async function getMessagesByMarkID(markerID: string): Promise<{ length: n
 
 export async function addMessage(issue_id: string, user_id: string, lastName: string, firstName: string, content: string): Promise<z.infer<typeof message> | null> {
   try {
-    const messages = await MessagesModel.findById(issue_id) as IMessage;
+    const messages = await MessagesModel.findOne({ issue_id: issue_id }, { content: 1 }) as IMessage;
     if (! messages) {
       return null;
     }
@@ -81,7 +81,7 @@ export async function addMessage(issue_id: string, user_id: string, lastName: st
     // const newId = messagesDB.length > 0 ? Math.max(...messagesDB.map(m => m.id)) + 1 : 1;
     // const newMessage: Message = { ...message, id: newId };
     // messagesDB.push(newMessage);
-    return data;
+    return data; //messages.content[messages.content.length - 1];
   } catch(err) {
     console.log("CONFLICT:", err);
     return null;

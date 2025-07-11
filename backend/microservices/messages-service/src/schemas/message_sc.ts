@@ -9,5 +9,5 @@ export const message = z.object({
 
 export const createMessage = z.object({
     message: z.string().min(15).max(200),
-    date: z.date()
+    date: z.string()
 })
