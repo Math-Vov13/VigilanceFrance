@@ -1,13 +1,11 @@
 import * as React from 'react';
-
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { Label } from '../ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { 
-  AlertCircle, 
-  Droplets, 
-  AlertTriangle, 
-  Flame,  
+import {
+  AlertCircle,
+  Droplets,
+  AlertTriangle,
+  Flame,
   MapPin,
   Users,
   CloudOff,
@@ -23,7 +21,6 @@ type IncidentFiltersProps = {
 };
 
 export function IncidentFilters({ selectedType, onChange, counts }: IncidentFiltersProps) {
-  // Map icon strings to actual Lucide icon components
   const getIconComponent = (iconName: string) => {
     const iconMap: Record<string, React.ReactElement> = {
       'car-crash': <AlertCircle className="h-4 w-4" />,
@@ -36,48 +33,89 @@ export function IncidentFilters({ selectedType, onChange, counts }: IncidentFilt
       'cloud-off': <CloudOff className="h-4 w-4" />,
       'alert-circle': <AlertCircle className="h-4 w-4" />
     };
-    
     return iconMap[iconName] || <AlertCircle className="h-4 w-4" />;
   };
 
-  // Add "All incidents" option to the top of the list
   const allIncidentTypes = [
-    { value: 'all', label: 'Tous les incidents', icon: 'map-pin', color: '#000000' },
+    { value: 'all', label: 'Tous les incidents', icon: 'map-pin', color: '#6B7280' },
     ...incidentTypes
   ];
 
   return (
-    <Card className="w-64 shadow-md">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-sm font-medium">Type d'incident</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <RadioGroup 
-          value={selectedType} 
+    <div className="glass-card-dark rounded-xl overflow-hidden shadow-xl">
+      {/* Header with gradient */}
+      <div className="px-5 py-4 gradient-navbar border-b border-gray-800">
+        <h3 className="text-sm font-semibold text-white tracking-wide">
+          Type d'incident
+        </h3>
+      </div>
+      
+      {/* Content */}
+      <div className="p-4">
+        <RadioGroup
+          value={selectedType}
           onValueChange={onChange}
           className="space-y-2"
         >
-          {allIncidentTypes.map((type) => (
-            <div key={type.value} className="flex items-center space-x-2">
-              <RadioGroupItem value={type.value} id={`incident-type-${type.value}`} />
-              <Label 
-                htmlFor={`incident-type-${type.value}`}
-                className="flex items-center cursor-pointer text-sm"
+          {allIncidentTypes.map((type) => {
+            const count = counts?.find(c => c.value === type.value)?.count || 0;
+            const isSelected = selectedType === type.value;
+            
+            return (
+              <div 
+                key={type.value} 
+                className={`
+                  flex items-center space-x-3 p-3 rounded-lg 
+                  transition-all duration-200 cursor-pointer group
+                  ${isSelected 
+                    ? 'bg-gradient-to-r from-blue-600/20 to-purple-600/20 border border-blue-500/50 glow-blue' 
+                    : 'hover:bg-gray-800/50 border border-transparent'
+                  }
+                `}
+                onClick={() => onChange(type.value)}
               >
-                <span className="mr-2" style={{ color: type.color }}>
-                  {type.value === 'all' ? <MapPin className="h-4 w-4" /> : getIconComponent(type.icon)}
-                </span>
-                {type.label}
-                {counts && counts.find(c => c.value === type.value)?.count > 0 && (
-                  <span className="ml-2 text-xs text-gray-500">
-                    ({counts.find(c => c.value === type.value)?.count || 0})
-                  </span>
-                )}
-              </Label>
-            </div>
-          ))}
+                <RadioGroupItem 
+                  value={type.value} 
+                  id={`incident-type-${type.value}`}
+                  className={isSelected ? 'border-blue-400' : 'border-gray-600'}
+                />
+                <Label
+                  htmlFor={`incident-type-${type.value}`}
+                  className="flex items-center justify-between cursor-pointer text-sm flex-1"
+                >
+                  <div className="flex items-center gap-3">
+                    <span 
+                      className={`transition-all duration-200 ${
+                        isSelected ? 'scale-110' : 'group-hover:scale-105'
+                      }`}
+                      style={{ color: isSelected ? type.color : '#9CA3AF' }}
+                    >
+                      {type.value === 'all' ? <MapPin className="h-4 w-4" /> : getIconComponent(type.icon)}
+                    </span>
+                    <span className={`font-medium transition-colors ${
+                      isSelected ? 'text-white' : 'text-gray-300 group-hover:text-white'
+                    }`}>
+                      {type.label}
+                    </span>
+                  </div>
+                  {count > 0 && (
+                    <span className={`
+                      ml-2 px-2.5 py-0.5 text-xs rounded-full font-semibold
+                      transition-all duration-200
+                      ${isSelected 
+                        ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' 
+                        : 'bg-gray-800 text-gray-300 group-hover:bg-gray-700'
+                      }
+                    `}>
+                      {count}
+                    </span>
+                  )}
+                </Label>
+              </div>
+            );
+          })}
         </RadioGroup>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

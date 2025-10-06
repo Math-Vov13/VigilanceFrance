@@ -11,42 +11,48 @@ const errorCallbacks = new Set<(error: string) => void>();
 const connectionCallbacks = new Set<() => void>();
 const disconnectionCallbacks = new Set<() => void>();
 
+
 /**
  * Initialize the socket
  * @param issueId 
  */
-export const initializeSocket = (issueId: string): void => {
-    console.log(`Initializing socket for issue ${issueId}...`);
-    
-    if (socket && currentIssueId === issueId && socket.connected) {
-      console.log('Socket already connected to this issue');
-      return;
-    }
-  
-    if (socket) {
-      console.log(`Disconnecting existing socket for issue ${currentIssueId}...`);
-      socket.disconnect();
-    }
-  
-    currentIssueId = issueId;
-    
-    console.log(`Creating new socket for issue ${issueId}...`);
-    socket = io('ws://localhost:3000/v1/mess', {
-      query: { issue_id: issueId },
-      withCredentials: true,
-      transports: ['websocket', 'polling'],
-      autoConnect: true
-    });
-  
-    socket.on('connect', () => {
-      console.log(`Socket connected to issue ${issueId}`);
-      connectionCallbacks.forEach(callback => callback());
-    });
-  
-    socket.on('disconnect', () => {
-      console.log(`Socket disconnected from issue ${issueId}`);
-      disconnectionCallbacks.forEach(callback => callback());
-    });
+export const initializeSocket = (issueId: string): Socket | null => {
+  console.log(`Initializing socket for issue ${issueId}...`);
+
+  if (socket && currentIssueId === issueId && socket.connected) {
+    console.log('Socket already connected to this issue');
+    return null;
+  }
+
+  if (socket) {
+    console.log(`Disconnecting existing socket for issue ${currentIssueId}...`);
+    socket.disconnect();
+  }
+
+  currentIssueId = issueId;
+
+  console.log(`Creating new socket for issue ${issueId}...`);
+  socket = io('http://localhost:8000/', {
+    path: '/socket.io',
+    query: { issue_id: issueId },
+    withCredentials: true,
+    transports: ['websocket', 'polling'],
+    autoConnect: true,
+    timeout: 20000,
+    reconnection: true,
+    reconnectionAttempts: 5,
+    reconnectionDelay: 1000
+  });
+
+  socket.on('connect', () => {
+    console.log(`Socket connected to issue ${issueId} with ID: ${socket?.id}`);
+    connectionCallbacks.forEach(callback => callback());
+  });
+
+  socket.on('disconnect', (reason) => {
+    console.log(`Socket disconnected from issue ${issueId}, reason:`, reason);
+    disconnectionCallbacks.forEach(callback => callback());
+  });
 
   socket.on('message', (message: Comment) => {
     console.log('New message received:', message);
@@ -59,35 +65,48 @@ export const initializeSocket = (issueId: string): void => {
   });
 
   socket.on('error_no_auth', () => {
-    console.error('Authentication error');
+    console.error('Authentication error: No valid token provided');
     errorCallbacks.forEach(callback => callback('Authentication required'));
   });
 
   socket.on('connect_error', (error) => {
-    console.error('Connection error:', error);
+    console.error('Connection error:', error.message);
+    console.error('Full error object:', error);
     errorCallbacks.forEach(callback => callback(`Connection error: ${error.message}`));
   });
+
+  socket.on('reconnect_error', (error) => {
+    console.error('Reconnection error:', error.message);
+    errorCallbacks.forEach(callback => callback(`Reconnection error: ${error.message}`));
+  });
+
+  socket.on('reconnect_failed', () => {
+    console.error('Reconnection failed after maximum attempts');
+    errorCallbacks.forEach(callback => callback('Failed to reconnect to server'));
+  });
+
+  return socket as Socket;
 };
 
 export const socketMessageToComment = (socketMessage: SocketMessage): Comment => {
-    return {
-      id: socketMessage._id,
-      text: socketMessage.message,
-      user: `${socketMessage.firstName} ${socketMessage.lastName}`.trim() || 'Utilisateur',
-      firstName: socketMessage.firstName,
-      lastName: socketMessage.lastName,
-      date: socketMessage.created_at,
-      likes: socketMessage.likes || 0,
-      reported: socketMessage.reported || false
-    };
+  return {
+    id: socketMessage._id,
+    text: socketMessage.message,
+    user: `${socketMessage.firstName} ${socketMessage.lastName}`.trim() || 'Utilisateur',
+    firstName: socketMessage.firstName,
+    lastName: socketMessage.lastName,
+    date: socketMessage.created_at,
+    likes: socketMessage.likes || 0,
+    reported: socketMessage.reported || false
   };
-  
-  /**
-   * Convert an array of SocketMessages to Comments
-   */
-  export const socketMessagesToComments = (socketMessages: SocketMessage[]): Comment[] => {
-    return socketMessages.map(socketMessageToComment);
-  };
+};
+
+/**
+ * Convert an array of SocketMessages to Comments
+ */
+export const socketMessagesToComments = (socketMessages: SocketMessage[]): Comment[] => {
+  return socketMessages.map(socketMessageToComment);
+};
 
 /**
  * Send a message
@@ -100,28 +119,28 @@ export const sendMessage = (text: string): void => {
     return;
   }
 
-  socket.emit('message', { message: text });
+  socket.emit('message', { message: text, date: new Date().toISOString() });
 };
 
 /**
  * Disconnect the socket
  */
 export const disconnectSocket = (): void => {
-    if (socket) {
-        if (socket.connected) {
-            socket.disconnect();
-        }     else {
-            const disconnectOnce = () => {
-            socket?.disconnect();
-            socket?.off('connect', disconnectOnce);
-            };
-            socket.once('connect', disconnectOnce);
-        }
-      
-        socket = null;
-        currentIssueId = null;
+  if (socket) {
+    if (socket.connected) {
+      socket.disconnect();
+    } else {
+      const disconnectOnce = () => {
+        socket?.disconnect();
+        socket?.off('connect', disconnectOnce);
+      };
+      socket.once('connect', disconnectOnce);
     }
+
+    socket = null;
+    currentIssueId = null;
   }
+}
 
 /**
  * Register a callback for new messages

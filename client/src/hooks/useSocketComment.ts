@@ -1,8 +1,10 @@
-// useSocketComments.ts
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import socketService, { socketMessagesToComments } from '../services/socketService';
 
 import { Comment } from '../types';
+import { Socket } from 'socket.io-client';
+
+const API_URL = import.meta.env.VITE_PUBLIC_API_MESS_URL || 'http://localhost:8000/api/mess';
 
 /**
  * Custom hook for managing comments using WebSockets
@@ -13,6 +15,7 @@ export const useSocketComments = (issueId: string) => {
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
     if (!issueId) return;
@@ -22,7 +25,7 @@ export const useSocketComments = (issueId: string) => {
           setLoading(true);
           
           // Utiliser le bon chemin d'endpoint
-          const response = await fetch(`${import.meta.env.VITE_API_GATEWAY_URL}/mess/messages?issue_id=${issueId}`, {
+          const response = await fetch(`${API_URL}/messages?issue_id=${issueId}`, {
             credentials: 'include'
           });
           
@@ -49,7 +52,7 @@ export const useSocketComments = (issueId: string) => {
           setLoading(false);
         }
       };
-    socketService.initializeSocket(issueId);
+    socketRef.current = socketService.initializeSocket(issueId);
     
     // Register event handlers
     const unsubscribeMessage = socketService.onMessage((message) => {
@@ -76,6 +79,10 @@ export const useSocketComments = (issueId: string) => {
       unsubscribeError();
       unsubscribeConnect();
       unsubscribeDisconnect();
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
       socketService.disconnectSocket();
     };
   }, [issueId]);

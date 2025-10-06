@@ -7,124 +7,70 @@ import { motion } from 'framer-motion';
 
 export default function Home() {
   return (
-    <div className="min-h-screen flex flex-col font-inter">
+    <div className="min-h-screen flex flex-col bg-gray-950 dark">
       <Navbar />
       
       {/* Hero Section */}
-      <section className="flex-grow flex items-center relative france-map-bg overflow-hidden">
-        {/* Background with France colors and map */}
-        <div className="absolute inset-0 bg-gray-100">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-600/90 via-blue-800/80 to-blue-900/90"></div>
+      <section className="flex-grow flex items-center relative overflow-hidden pt-20">
+        {/* Animated Background */}
+        <div className="absolute inset-0">
+          <div className="absolute top-20 left-10 w-96 h-96 bg-blue-500/10 rounded-full filter blur-3xl animate-pulse"></div>
+          <div className="absolute bottom-20 right-10 w-96 h-96 bg-purple-500/10 rounded-full filter blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
         </div>
 
         {/* Hero Content */}
-        <div className="container mx-auto px-6 py-24 relative text-white z-10">
-          <div className="flex flex-col lg:flex-row items-center justify-between gap-12">
-            {/* Left Column: Text Content */}
-            <motion.div 
-              className="w-full lg:w-1/2"
+        <div className="container mx-auto px-6 py-24 relative z-10">
+          <div className="max-w-4xl mx-auto text-center">
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
             >
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.2 }}
-                className="mb-4 inline-block"
-              >
-                <span className="bg-white/20 backdrop-blur-sm px-4 py-1 rounded-full text-sm font-medium">
-                  Plateforme citoyenne de signalement collaboratif
+              <span className="inline-block mb-4 px-4 py-2 bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-500/30 rounded-full text-sm text-blue-300">
+                Plateforme citoyenne collaborative
+              </span>
+              
+              <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight text-white">
+                Suivez les incidents
+                <span className="block mt-2 bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+                  partout en France
                 </span>
-              </motion.div>
+              </h1>
 
-              <motion.h1 
-                className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3, duration: 0.6 }}
-              >
-                Suivez et signalez les incidents 
-                <div className="ml-2">
-                  <span className="france-colors-gradient rounded-md px-2 py-1">partout en France</span>
-                </div>
-              </motion.h1>
-
-              <motion.p 
-                className="text-xl md:text-2xl max-w-2xl mb-8 text-blue-50"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4, duration: 0.6 }}
-              >
+              <p className="text-xl text-gray-400 mb-8 max-w-2xl mx-auto">
                 Une plateforme interactive pour cartographier les événements en temps réel 
-                et améliorer la sécurité collective de tous les citoyens.
-              </motion.p>
+                et améliorer la sécurité collective.
+              </p>
 
-              <motion.div 
-                className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 mt-8"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5, duration: 0.6 }}
-              >
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Link to="/map">
+                  <Button size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white px-8 py-6">
+                    Commencer
+                    <ArrowRight className="ml-2 w-5 h-5" />
+                  </Button>
+                </Link>
                 <Link to="/about">
-                  <Button variant="secondary" size="lg" className="px-6 py-6 text-lg font-medium hover-lift">
+                  <Button size="lg" variant="outline" className="border-gray-700 hover:bg-gray-800 text-gray-300 px-8 py-6">
                     En savoir plus
                   </Button>
                 </Link>
-                <Link to="/map">
-                  <Button
-                    className="bg-gradient-to-r from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 text-white
-                    px-6 py-6 text-lg shadow-xl hover-lift"
-                  >
-                    Commencer
-                    <ArrowRight className="ml-2 h-5 w-5" />
-                  </Button>
-                </Link>
-              </motion.div>
+              </div>
 
-              <motion.div 
-                className="mt-12 flex items-center space-x-4 text-sm text-blue-100"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.7 }}
-              >
+              <div className="mt-12 flex items-center justify-center gap-4 text-sm text-gray-500">
                 <div className="flex -space-x-2">
-                  <div className="w-8 h-8 rounded-full bg-white text-blue-600 flex items-center justify-center">
-                    <span className="font-bold">+</span>
-                  </div>
-                  <div className="w-8 h-8 rounded-full bg-blue-500 border-2 border-white"></div>
-                  <div className="w-8 h-8 rounded-full bg-blue-600 border-2 border-white"></div>
-                  <div className="w-8 h-8 rounded-full bg-blue-700 border-2 border-white"></div>
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 border-2 border-gray-900"></div>
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 border-2 border-gray-900"></div>
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-pink-500 to-red-500 border-2 border-gray-900"></div>
                 </div>
-                <span>Rejoignez plus de 50 000 utilisateurs actifs</span>
-              </motion.div>
-            </motion.div>
-
-            {/* Right Column: Map */}
-            <motion.div 
-              className="w-full lg:w-1/2 justify-center items-center hidden lg:block"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.6, duration: 0.8 }}
-            >
-              <div className='opacity-75'>
-              <img
-                src="./src/assets/french-map.png" 
-                alt="French map" 
-                className="w-full max-w-md object-contain"
-              />
+                <span className="text-gray-400">+50 000 utilisateurs actifs</span>
               </div>
             </motion.div>
           </div>
         </div>
-
-        {/* Animated gradient elements */}
-        <div className="absolute right-0 -bottom-32 w-96 h-96 bg-blue-500/30 rounded-full filter blur-3xl"></div>
-        <div className="absolute left-0 top-0 w-72 h-72 bg-blue-300/20 rounded-full filter blur-3xl"></div>
       </section>
       
       {/* Feature Section */}
-      <section className="py-24 bg-gradient-to-b from-white to-blue-50">
+      <section className="py-20 bg-gray-950 relative">
         <div className="container mx-auto px-6">
           <motion.div
             className="text-center mb-16"
@@ -133,60 +79,58 @@ export default function Home() {
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
           >
-            <h2 className="text-3xl font-bold mb-4 text-gray-800">
-              <span className="text-gradient">Comment ça fonctionne</span>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-white">
+              Comment ça <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">fonctionne</span>
             </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Trois étapes simples pour contribuer à la sécurité collective
-            </p>
+            <p className="text-gray-400 text-lg">Trois étapes simples pour contribuer</p>
           </motion.div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
             <motion.div 
-              className="glass-card p-8 rounded-xl hover-lift"
+              className="p-8 rounded-2xl bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700/50 hover:border-blue-500/50 transition-all duration-300"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.1, duration: 0.5 }}
             >
-              <div className="bg-gradient-primary w-16 h-16 mx-auto mb-6 rounded-full flex items-center justify-center text-white shadow-lg">
-                <MapPin className="w-8 h-8 text-gray-800" />
+              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center mb-6">
+                <MapPin className="w-7 h-7 text-white" />
               </div>
-              <h3 className="text-xl font-semibold mb-4 text-center text-gray-800">Visualisez la carte</h3>
-              <p className="text-gray-600 text-center">
-                Consultez en temps réel les incidents signalés partout en France avec notre interface interactive
+              <h3 className="text-xl font-semibold mb-3 text-white">Visualisez la carte</h3>
+              <p className="text-gray-400">
+                Consultez en temps réel les incidents signalés avec CesiumJS
               </p>
             </motion.div>
             
             <motion.div 
-              className="glass-card p-8 rounded-xl hover-lift"
+              className="p-8 rounded-2xl bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700/50 hover:border-purple-500/50 transition-all duration-300"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.2, duration: 0.5 }}
             >
-              <div className="bg-gradient-primary w-16 h-16 mx-auto mb-6 rounded-full flex items-center justify-center text-white shadow-lg">
-                <UserCheck className="w-8 h-8 text-gray-800" />
+              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center mb-6">
+                <UserCheck className="w-7 h-7 text-white" />
               </div>
-              <h3 className="text-xl font-semibold mb-4 text-center text-gray-800">Créez un compte</h3>
-              <p className="text-gray-600 text-center">
-                Inscrivez-vous gratuitement pour contribuer et suivre les incidents qui vous concernent
+              <h3 className="text-xl font-semibold mb-3 text-white">Créez un compte</h3>
+              <p className="text-gray-400">
+                Inscrivez-vous gratuitement pour contribuer et suivre les incidents
               </p>
             </motion.div>
             
             <motion.div 
-              className="glass-card p-8 rounded-xl hover-lift"
+              className="p-8 rounded-2xl bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700/50 hover:border-pink-500/50 transition-all duration-300"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.3, duration: 0.5 }}
             >
-              <div className="bg-gradient-primary w-16 h-16 mx-auto mb-6 rounded-full flex items-center justify-center text-white shadow-lg">
-                <FileWarning className="w-8 h-8 text-gray-800" />
+              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-pink-500 to-pink-600 flex items-center justify-center mb-6">
+                <FileWarning className="w-7 h-7 text-white" />
               </div>
-              <h3 className="text-xl font-semibold mb-4 text-center text-gray-800">Signalez un incident</h3>
-              <p className="text-gray-600 text-center">
-                Ajoutez des informations, photos et descriptions précises des événements que vous constatez
+              <h3 className="text-xl font-semibold mb-3 text-white">Signalez un incident</h3>
+              <p className="text-gray-400">
+                Ajoutez des informations précises des événements que vous constatez
               </p>
             </motion.div>
           </div>
@@ -199,7 +143,7 @@ export default function Home() {
             transition={{ delay: 0.4, duration: 0.5 }}
           >
             <Link to="/map">
-              <Button className="bg-gradient-to-r from-blue-600 to-blue-800 text-white px-8 py-6 text-lg rounded-full hover-lift">
+              <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white px-8 py-6 text-lg rounded-full">
                 Explorer la carte
                 <MapPin className="ml-2 h-5 w-5" />
               </Button>

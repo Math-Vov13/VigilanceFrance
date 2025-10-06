@@ -295,17 +295,90 @@ export const mapsApi = {
 };
 
 export const notifsApi = {
-  getNotifications: () => apiClient.get('/notifs/user'),
-  markAsRead: (id: string | number) => apiClient.put(`/notifs/${id}/read`),
-  markAllAsRead: () => apiClient.put('/notifs/read-all'),
-  updatePreferences: (preferences: User) => apiClient.put('/notifs/preferences', preferences)
+  getNotifications: async () => {
+    try {
+      const response = await apiClient.get('/notifs/user');
+      return extractData<any[]>(response);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+      throw error;
+    }
+  },
+  getUnreadCount: async () => {
+    try {
+      const response = await apiClient.get('/notifs/unread-count');
+      return extractData<number>(response);
+    } catch (error) {
+      console.error('Error fetching unread count:', error);
+      throw error;
+    }
+  },
+  markAsRead: async (id: string | number) => {
+    try {
+      const response = await apiClient.put(`/notifs/${id}/read`);
+      return extractData<any>(response);
+    } catch (error) {
+      console.error(`Error marking notification ${id} as read:`, error);
+      throw error;
+    }
+  },
+  markAllAsRead: async () => {
+    try {
+      const response = await apiClient.put('/notifs/read-all');
+      return extractData<any>(response);
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+      throw error;
+    }
+  },
+  updatePreferences: async (preferences: User) => {
+    try {
+      const response = await apiClient.put('/notifs/preferences', preferences);
+      return extractData<any>(response);
+    } catch (error) {
+      console.error('Error updating notification preferences:', error);
+      throw error;
+    }
+  }
 };
 
 export const messApi = {
-  getConversations: () => apiClient.get('/mess/conversations'),
-  getMessages: (conversationId: string) => apiClient.get(`/mess/conversations/${conversationId}/messages`),
-  sendMessage: (conversationId: string, content: string) => apiClient.post(`/mess/conversations/${conversationId}/messages`, { content }),
-  createConversation: (participants: string[], title?: string) => apiClient.post('/mess/conversations', { participants, title })
+  getConversations: async () => {
+    try {
+      const response = await apiClient.get('/mess/conversations');
+      return extractData<any[]>(response);
+    } catch (error) {
+      console.error('Error fetching conversations:', error);
+      throw error;
+    }
+  },
+  getMessages: async (conversationId: string) => {
+    try {
+      const response = await apiClient.get(`/mess/conversations/${conversationId}/messages`);
+      return extractData<any[]>(response);
+    } catch (error) {
+      console.error(`Error fetching messages for conversation ${conversationId}:`, error);
+      throw error;
+    }
+  },
+  sendMessage: async (conversationId: string, content: string) => {
+    try {
+      const response = await apiClient.post(`/mess/conversations/${conversationId}/messages`, { content });
+      return extractData<any>(response);
+    } catch (error) {
+      console.error(`Error sending message in conversation ${conversationId}:`, error);
+      throw error;
+    }
+  },
+  createConversation: async (participants: string[], title?: string) => {
+    try {
+      const response = await apiClient.post('/mess/conversations', { participants, title });
+      return extractData<any>(response);
+    } catch (error) {
+      console.error('Error creating conversation:', error);
+      throw error;
+    }
+  }
 };
 
 // Pour la compatibilité avec le code existant

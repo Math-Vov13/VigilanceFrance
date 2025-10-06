@@ -7,12 +7,11 @@ import { Button } from '../ui/button';
 import { Checkbox } from '../ui/checkbox';
 import { useToast } from '../ui/use-toast';
 import { motion } from 'framer-motion';
-import { Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle, Mail, Lock, User as UserIcon, Shield } from 'lucide-react';
 import { useForm, FieldValues } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { loginSchema, registerSchema, LoginFormValues, RegisterFormValues } from '../../schemas/authSchemas';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
-
 import { FranceConnectButton } from '../ui/franceConnectButton';
 
 export function AuthForms() {
@@ -32,6 +31,7 @@ export function AuthForms() {
       rememberMe: false
     }
   });
+  
   const registerForm = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
@@ -101,7 +101,6 @@ export function AuthForms() {
   const handleGoogleLogin = async () => {
     try {
       const googleToken = "mock_google_token";
-      
       await googleAuth(googleToken);
       toast({
         title: "Connexion Google réussie",
@@ -119,11 +118,9 @@ export function AuthForms() {
     }
   };
 
-  // Fonction pour gérer la connexion avec FranceConnect
   const handleFranceConnectLogin = async () => {
     try {
       const franceConnectCode = "mock_fc_code"; 
-      
       await franceConnectAuth(franceConnectCode);
       toast({
         title: "Connexion FranceConnect réussie",
@@ -143,36 +140,39 @@ export function AuthForms() {
 
   return (
     <div className="max-w-md w-full">
-      <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-blue-100">
-        <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-6">
+      <div className="bg-card dark:bg-gray-900/70 backdrop-blur-xl rounded-2xl shadow-2xl overflow-hidden border border-border dark:border-gray-800">
+        <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 p-6">
           <motion.div 
             initial={{ y: -20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.1, duration: 0.5 }}
+            className="flex items-center justify-center gap-3 mb-2"
           >
-            <h2 className="text-2xl font-bold text-center">
+            <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center">
+              <Shield className="w-6 h-6 text-white" />
+            </div>
+            <h2 className="text-2xl font-bold text-white">
               VigilanceFrance
             </h2>
-            <p className="text-center mt-2 text-blue-100">
-              Plateforme de signalement collaboratif
-            </p>
           </motion.div>
+          <p className="text-center mt-2 text-blue-100">
+            Plateforme de signalement collaboratif
+          </p>
         </div>
         
-        {/* Display global error if exists */}
         {error && (
           <div className="px-6 pt-4 -mb-2">
-            <div className="bg-red-50 text-red-800 px-4 py-2 rounded-md flex items-start">
-              <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
+            <div className="bg-red-500/10 dark:bg-red-500/20 border border-red-500/30 text-red-600 dark:text-red-400 px-4 py-3 rounded-lg flex items-start gap-2">
+              <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
               <span className="text-sm">{error}</span>
             </div>
           </div>
         )}
         
         <Tabs defaultValue="login" className="w-full p-6">
-          <TabsList className="grid w-full grid-cols-2 mb-6">
-            <TabsTrigger value="login" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">Connexion</TabsTrigger>
-            <TabsTrigger value="register" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">Inscription</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 mb-6 bg-muted dark:bg-gray-800/50">
+            <TabsTrigger value="login" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white">Connexion</TabsTrigger>
+            <TabsTrigger value="register" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white">Inscription</TabsTrigger>
           </TabsList>
           
           <TabsContent value="login" className="min-h-[450px]">
@@ -182,32 +182,19 @@ export function AuthForms() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
             >
-              {/* Boutons de connexion tiers */}
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <Button 
                   type="button" 
                   variant="outline" 
-                  className="w-full border-gray-300 hover:bg-gray-50 flex items-center justify-center"
+                  className="w-full flex items-center justify-center"
                   onClick={handleGoogleLogin}
                   disabled={isSubmitting}
                 >
                   <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24">
-                    <path 
-                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" 
-                      fill="#4285F4"
-                    />
-                    <path 
-                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" 
-                      fill="#34A853"
-                    />
-                    <path 
-                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" 
-                      fill="#FBBC05"
-                    />
-                    <path 
-                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" 
-                      fill="#EA4335"
-                    />
+                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
                   </svg>
                   Google
                 </Button>
@@ -215,8 +202,8 @@ export function AuthForms() {
               </div>
 
               <div className="relative flex items-center justify-center">
-                <div className="absolute border-t border-gray-300 w-full"></div>
-                <span className="relative px-2 bg-white text-sm text-gray-500">ou avec email</span>
+                <div className="absolute border-t border-border dark:border-gray-700 w-full"></div>
+                <span className="relative px-2 bg-card dark:bg-gray-900/70 text-sm text-muted-foreground">ou avec email</span>
               </div>
 
               <Form {...loginForm}>
@@ -226,15 +213,18 @@ export function AuthForms() {
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-gray-700">Adresse email</FormLabel>
+                        <FormLabel>Adresse email</FormLabel>
                         <FormControl>
-                          <Input 
-                            placeholder="votre@email.com"
-                            type="email"
-                            className="border-blue-100 focus:border-blue-300"
-                            disabled={isSubmitting}
-                            {...field} 
-                          />
+                          <div className="relative">
+                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                            <Input 
+                              placeholder="votre@email.com"
+                              type="email"
+                              className="pl-10"
+                              disabled={isSubmitting}
+                              {...field} 
+                            />
+                          </div>
                         </FormControl>
                         <FormMessage className="text-xs" />
                       </FormItem>
@@ -246,19 +236,20 @@ export function AuthForms() {
                     name="password"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-gray-700">Mot de passe</FormLabel>
+                        <FormLabel>Mot de passe</FormLabel>
                         <FormControl>
                           <div className="relative">
+                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                             <Input 
                               placeholder="••••••••"
                               type={showPassword ? "text" : "password"}
-                              className="border-blue-100 focus:border-blue-300 pr-10"
+                              className="pl-10 pr-10"
                               disabled={isSubmitting}
                               {...field} 
                             />
                             <button 
                               type="button"
-                              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
                               onClick={() => setShowPassword(!showPassword)}
                               disabled={isSubmitting}
                             >
@@ -280,15 +271,14 @@ export function AuthForms() {
                           <Checkbox 
                             checked={field.value}
                             onCheckedChange={field.onChange}
-                            className="data-[state=checked]:bg-blue-600"
                             disabled={isSubmitting}
                           />
                         </FormControl>
                         <div className="space-x-1 flex justify-between items-center w-full">
-                          <FormLabel className="text-sm text-gray-600">
+                          <FormLabel className="text-sm !mt-0">
                             Se souvenir de moi
                           </FormLabel>
-                          <Button variant="link" className="p-0 h-auto text-blue-600" disabled={isSubmitting}>
+                          <Button variant="link" className="p-0 h-auto text-primary" disabled={isSubmitting}>
                             Mot de passe oublié?
                           </Button>
                         </div>
@@ -298,7 +288,7 @@ export function AuthForms() {
                   
                   <Button 
                     type="submit" 
-                    className="w-full bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 transition-all" 
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white" 
                     disabled={isSubmitting}
                   >
                     {isSubmitting ? 'Connexion en cours...' : 'Se connecter'}
@@ -315,32 +305,19 @@ export function AuthForms() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
             >
-              {/* Boutons d'inscription tiers */}
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <Button 
                   type="button" 
                   variant="outline" 
-                  className="w-full border-gray-300 hover:bg-gray-50 flex items-center justify-center"
+                  className="w-full flex items-center justify-center"
                   onClick={handleGoogleLogin}
                   disabled={isSubmitting}
                 >
                   <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24">
-                    <path 
-                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" 
-                      fill="#4285F4"
-                    />
-                    <path 
-                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" 
-                      fill="#34A853"
-                    />
-                    <path 
-                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" 
-                      fill="#FBBC05"
-                    />
-                    <path 
-                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" 
-                      fill="#EA4335"
-                    />
+                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
                   </svg>
                   Google
                 </Button>
@@ -348,8 +325,8 @@ export function AuthForms() {
               </div>
 
               <div className="relative flex items-center justify-center">
-                <div className="absolute border-t border-gray-300 w-full"></div>
-                <span className="relative px-2 bg-white text-sm text-gray-500">ou avec email</span>
+                <div className="absolute border-t border-border dark:border-gray-700 w-full"></div>
+                <span className="relative px-2 bg-card dark:bg-gray-900/70 text-sm text-muted-foreground">ou avec email</span>
               </div>
               
               <Form {...registerForm}>
@@ -360,13 +337,9 @@ export function AuthForms() {
                       name="firstName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-gray-700">Prénom</FormLabel>
+                          <FormLabel>Prénom</FormLabel>
                           <FormControl>
-                            <Input 
-                              className="border-blue-100 focus:border-blue-300"
-                              disabled={isSubmitting}
-                              {...field} 
-                            />
+                            <Input disabled={isSubmitting} {...field} />
                           </FormControl>
                           <FormMessage className="text-xs" />
                         </FormItem>
@@ -378,13 +351,9 @@ export function AuthForms() {
                       name="lastName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-gray-700">Nom</FormLabel>
+                          <FormLabel>Nom</FormLabel>
                           <FormControl>
-                            <Input 
-                              className="border-blue-100 focus:border-blue-300"
-                              disabled={isSubmitting}
-                              {...field} 
-                            />
+                            <Input disabled={isSubmitting} {...field} />
                           </FormControl>
                           <FormMessage className="text-xs" />
                         </FormItem>
@@ -397,12 +366,11 @@ export function AuthForms() {
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-gray-700">Adresse email</FormLabel>
+                        <FormLabel>Adresse email</FormLabel>
                         <FormControl>
                           <Input 
                             type="email"
                             placeholder="votre@email.com"
-                            className="border-blue-100 focus:border-blue-300"
                             disabled={isSubmitting}
                             {...field} 
                           />
@@ -417,19 +385,19 @@ export function AuthForms() {
                     name="password"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-gray-700">Mot de passe</FormLabel>
+                        <FormLabel>Mot de passe</FormLabel>
                         <FormControl>
                           <div className="relative">
                             <Input 
                               type={showPassword ? "text" : "password"}
                               placeholder="••••••••"
-                              className="border-blue-100 focus:border-blue-300 pr-10"
+                              className="pr-10"
                               disabled={isSubmitting}
                               {...field} 
                             />
                             <button 
                               type="button"
-                              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
                               onClick={() => setShowPassword(!showPassword)}
                               disabled={isSubmitting}
                             >
@@ -447,19 +415,19 @@ export function AuthForms() {
                     name="confirmPassword"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-gray-700">Confirmer le mot de passe</FormLabel>
+                        <FormLabel>Confirmer le mot de passe</FormLabel>
                         <FormControl>
                           <div className="relative">
                             <Input 
                               type={showConfirmPassword ? "text" : "password"}
                               placeholder="••••••••"
-                              className="border-blue-100 focus:border-blue-300 pr-10"
+                              className="pr-10"
                               disabled={isSubmitting}
                               {...field} 
                             />
                             <button 
                               type="button"
-                              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
                               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                               disabled={isSubmitting}
                             >
@@ -481,13 +449,13 @@ export function AuthForms() {
                           <Checkbox 
                             checked={field.value}
                             onCheckedChange={field.onChange}
-                            className="data-[state=checked]:bg-blue-600 mt-1"
+                            className="mt-1"
                             disabled={isSubmitting}
                           />
                         </FormControl>
                         <div>
-                          <FormLabel className="text-sm text-gray-600">
-                            J'accepte les <Link to={"/legal/terms"}  className="text-blue-600 hover:text-blue-800 font-medium">conditions d'utilisation</Link> et la <Link to={"/legal/privacy"} className="text-blue-600 hover:text-blue-800 font-medium">politique de confidentialité</Link>
+                          <FormLabel className="text-sm font-normal">
+                            J'accepte les <Link to="/legal/terms" className="text-primary hover:underline font-medium">conditions d'utilisation</Link> et la <Link to="/legal/privacy" className="text-primary hover:underline font-medium">politique de confidentialité</Link>
                           </FormLabel>
                           <FormMessage className="text-xs" />
                         </div>
@@ -497,7 +465,7 @@ export function AuthForms() {
                   
                   <Button 
                     type="submit" 
-                    className="w-full bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 transition-all" 
+                    className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white" 
                     disabled={isSubmitting}
                   >
                     {isSubmitting ? 'Inscription en cours...' : 'Créer un compte'}
@@ -509,12 +477,9 @@ export function AuthForms() {
         </Tabs>
       </div>
       
-      {/* Message de sécurité en dessous du formulaire */}
-      <div className="mt-6 text-center text-gray-500 text-sm">
-        <p className="flex items-center justify-center">
-          <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-          </svg>
+      <div className="mt-6 text-center text-muted-foreground text-sm">
+        <p className="flex items-center justify-center gap-2">
+          <Shield className="h-4 w-4" />
           Vos données sont sécurisées et protégées
         </p>
       </div>
