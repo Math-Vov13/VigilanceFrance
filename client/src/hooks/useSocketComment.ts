@@ -4,7 +4,7 @@ import socketService, { socketMessagesToComments } from '../services/socketServi
 import { Comment } from '../types';
 import { Socket } from 'socket.io-client';
 
-const API_URL = import.meta.env.VITE_PUBLIC_API_MESS_URL || 'http://localhost:8000/api/mess';
+const API_URL = import.meta.env.VITE_PUBLIC_API_MESS_URL;
 
 /**
  * Custom hook for managing comments using WebSockets

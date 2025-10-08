@@ -20,9 +20,23 @@ const apiClient = axios.create({
 });
 
 apiClient.interceptors.request.use((config) => {
-  if (config.url?.includes('/auth/auth/refresh')) {
+  // Add refresh token header for endpoints that require it
+  const requiresRefreshToken = [
+    '/auth/auth/refresh',
+    '/auth/auth/logout'
+  ];
+  
+  const needsToken = requiresRefreshToken.some(endpoint => 
+    config.url?.includes(endpoint)
+  );
+  
+  if (needsToken) {
     const token = tokenService.getRefreshToken();
-    if (token) config.headers['Authorization'] = `Bearer ${token}`;
+    if (token) {
+      config.headers['Authorization'] = `Bearer ${token}`;
+    } else {
+      return Promise.reject(new Error('No refresh token available'));
+    }
   }
   return config;
 }, Promise.reject);
@@ -32,28 +46,50 @@ apiClient.interceptors.response.use(
   async error => {
     const originalRequest = error.config;
 
+    // Don't retry if it's the refresh endpoint itself
+    if (originalRequest.url?.includes('/auth/auth/refresh')) {
+      return Promise.reject(error);
+    }
+
     if (
-      error.response?.status === 401 && // Unauthorized
+      error.response?.status === 401 && 
       !originalRequest._retry
     ) {
       originalRequest._retry = true;
 
       try {
         const refreshToken = tokenService.getRefreshToken();
-        if (!refreshToken) throw new Error('No refresh token');
+        if (!refreshToken) {
+          console.log('No refresh token available for retry');
+          throw new Error('No refresh token');
+        }
 
-        const { data } = await axios.post(
-          `${import.meta.env.VITE_API_URL}/auth/refresh`,
+        console.log('Attempting to refresh token for failed request');
+        
+        // Use a separate axios instance to avoid triggering the interceptor again
+        const response = await axios.post(
+          `${API_GATEWAY_URL}/auth/auth/refresh`,
           {},
-          { withCredentials: true }
+          { 
+            withCredentials: true,
+            headers: {
+              'Authorization': `Bearer ${refreshToken}`
+            }
+          }
         );
 
-        if (data?._rft) {
-          tokenService.setRefreshToken(data._rft);
+        if (response.status === 200) {
+          console.log('Token refreshed, retrying original request');
+          // Wait briefly for cookie to be set
+          await new Promise(resolve => setTimeout(resolve, 100));
+          // Retry the original request with the new access token cookie
           return apiClient(originalRequest);
         }
       } catch (refreshError) {
+        console.error('Token refresh failed:', refreshError);
         tokenService.clearRefreshToken();
+        // Redirect to login or dispatch a logout action
+        window.location.href = '/auth';
         return Promise.reject(refreshError);
       }
     }
@@ -109,7 +145,8 @@ export const authApi = {
   logout: () => apiClient.post('/auth/auth/logout'),
   verifyToken: () => apiClient.get<ApiResponse<User>>('/auth/account/profile'),
   refreshToken: () => apiClient.post('/auth/auth/refresh'),
-  googleAuth: (token: string) => apiClient.post('/auth/auth/google', { token }),
+  googleAuth: (code: string) => apiClient.post('/auth/auth/google', { code }),
+  githubAuth: (code: string) => apiClient.post('/auth/auth/github', { code }),
   franceConnectAuth: (code: string) => apiClient.post('/auth/auth/france-connect', { code })
 };
 

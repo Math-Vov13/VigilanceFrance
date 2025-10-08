@@ -32,8 +32,10 @@ export default function Home() {
               
               <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight text-white">
                 Suivez les incidents
-                <span className="block mt-2 bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-                  partout en France
+                <span className="block mt-2 bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent space-x-4">
+                  <span className='text-blue-400'>partout</span> 
+                  <span className='text-white'>en</span>
+                  <span className='text-red-500'>France</span>
                 </span>
               </h1>
 
@@ -87,22 +89,6 @@ export default function Home() {
           
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
             <motion.div 
-              className="p-8 rounded-2xl bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700/50 hover:border-blue-500/50 transition-all duration-300"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.1, duration: 0.5 }}
-            >
-              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center mb-6">
-                <MapPin className="w-7 h-7 text-white" />
-              </div>
-              <h3 className="text-xl font-semibold mb-3 text-white">Visualisez la carte</h3>
-              <p className="text-gray-400">
-                Consultez en temps réel les incidents signalés avec CesiumJS
-              </p>
-            </motion.div>
-            
-            <motion.div 
               className="p-8 rounded-2xl bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700/50 hover:border-purple-500/50 transition-all duration-300"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -115,6 +101,22 @@ export default function Home() {
               <h3 className="text-xl font-semibold mb-3 text-white">Créez un compte</h3>
               <p className="text-gray-400">
                 Inscrivez-vous gratuitement pour contribuer et suivre les incidents
+              </p>
+            </motion.div>
+
+            <motion.div 
+              className="p-8 rounded-2xl bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700/50 hover:border-blue-500/50 transition-all duration-300"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1, duration: 0.5 }}
+            >
+              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center mb-6">
+                <MapPin className="w-7 h-7 text-white" />
+              </div>
+              <h3 className="text-xl font-semibold mb-3 text-white">Visualisez la carte</h3>
+              <p className="text-gray-400">
+                Consultez en temps réel les incidents signalés avec CesiumJS
               </p>
             </motion.div>
             

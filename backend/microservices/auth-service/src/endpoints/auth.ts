@@ -23,6 +23,7 @@ function createAccessCookie(res: Response, data_to_store: string, agent: string)
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
+        path: "/",
     });
 
     return access_token;
@@ -171,6 +172,7 @@ router.post("/login", body_schema_validation(UserLogin), async (req: Request, re
 router.post("/logout", verify_access_token, verify_refresh_token, async (req: Request, res: Response) => {
     // Détruit la Session
     res.clearCookie("Atk");
+    res.clearCookie("SID");
     try {
         await deleteCacheToken(req.refresh_token as string);
     } catch {

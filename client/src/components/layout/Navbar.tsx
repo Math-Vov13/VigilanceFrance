@@ -9,17 +9,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
-import { Menu, Home, LayoutDashboard, MapPin, Cloud, Bell, User, Settings, LogOut, Shield } from 'lucide-react';
+import { Home, LayoutDashboard, MapPin, Cloud, Bell, User, Settings, LogOut, Shield, FileWarning } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useState } from 'react';
 
 type NavbarProps = {
   showSearch?: boolean;
 };
 
 export function Navbar({ showSearch = false }: NavbarProps) {
-  const { user, isAuthenticated, logout } = useAuth();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { user, isAuthenticated, logout, loading } = useAuth();
   
   const initials = user 
     ? `${user.firstName.charAt(0)}${user.lastName.charAt(0)}` 
@@ -37,13 +35,6 @@ export function Navbar({ showSearch = false }: NavbarProps) {
           <div className="flex items-center justify-between h-16">
             {/* Left Section */}
             <div className="flex items-center gap-6">
-              <button 
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="p-2 hover:bg-gray-700/50 dark:hover:bg-gray-800/50 rounded-lg transition-colors text-gray-300"
-              >
-                <Menu className="w-5 h-5" />
-              </button>
-              
               <Link to="/" className="flex items-center gap-2">
                 <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center shadow-lg glow-blue">
                   <Shield className="w-5 h-5 text-white" />
@@ -62,13 +53,25 @@ export function Navbar({ showSearch = false }: NavbarProps) {
               <Link to="/">
                 <Button variant="ghost" className="text-gray-300 hover:text-white hover:bg-gray-700/50">
                   <Home className="w-4 h-4 mr-2" />
-                  Accueil
+                  Overview
                 </Button>
               </Link>
               <Link to="/dashboard">
                 <Button variant="ghost" className="text-gray-300 hover:text-white hover:bg-gray-700/50">
                   <LayoutDashboard className="w-4 h-4 mr-2" />
-                  Dashboard
+                  Monitoring
+                </Button>
+              </Link>
+              <Link to="/map">
+                <Button variant="ghost" className="text-gray-300 hover:text-white hover:bg-gray-700/50">
+                  <MapPin className="w-4 h-4 mr-2" />
+                  Map
+                </Button>
+              </Link>
+              <Link to="/reports">
+                <Button variant="ghost" className="text-gray-300 hover:text-white hover:bg-gray-700/50">
+                  <FileWarning className="w-4 h-4 mr-2" />
+                  Reports
                 </Button>
               </Link>
             </div>
@@ -103,8 +106,10 @@ export function Navbar({ showSearch = false }: NavbarProps) {
                 <Bell className="w-5 h-5" />
                 <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
               </Button>
-
-              {isAuthenticated ? (
+              {loading ? (
+                <div className="w-10 h-10 rounded-full bg-gray-700 animate-pulse"></div>
+              ) : (
+              isAuthenticated ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0 overflow-hidden border-2 border-gray-700 hover:border-blue-500 transition-colors">
@@ -149,43 +154,11 @@ export function Navbar({ showSearch = false }: NavbarProps) {
                     Connexion
                   </Button>
                 </Link>
-              )}
+              ))}
             </div>
           </div>
         </div>
       </motion.nav>
-
-      {/* Sidebar Overlay */}
-      {sidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Sidebar */}
-      <div className={`fixed top-16 left-0 bottom-0 w-64 bg-gray-900 dark:bg-gray-950 border-r border-gray-800 transform transition-transform duration-300 z-40 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="p-4 space-y-2">
-          <Link to="/" onClick={() => setSidebarOpen(false)}>
-            <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-800 dark:hover:bg-gray-800/50 transition-colors text-left text-gray-300">
-              <Home className="w-5 h-5" />
-              <span>Accueil</span>
-            </button>
-          </Link>
-          <Link to="/dashboard" onClick={() => setSidebarOpen(false)}>
-            <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-800 dark:hover:bg-gray-800/50 transition-colors text-left text-gray-300">
-              <LayoutDashboard className="w-5 h-5" />
-              <span>Dashboard</span>
-            </button>
-          </Link>
-          <Link to="/map" onClick={() => setSidebarOpen(false)}>
-            <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-800 dark:hover:bg-gray-800/50 transition-colors text-left text-gray-300">
-              <MapPin className="w-5 h-5" />
-              <span>Carte</span>
-            </button>
-          </Link>
-        </div>
-      </div>
     </>
   );
 }

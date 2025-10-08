@@ -1,7 +1,7 @@
 import { ApiResponse } from "../services/api";
 
 export interface User {
-  id: string;
+  _id: string;
   firstName: string;
   lastName: string;
   email: string;
@@ -9,15 +9,16 @@ export interface User {
 }
 export interface AuthContextType {
   user: User | null;
+  isAuthenticated: boolean;
+  loading: boolean;
+  isInitialized: boolean; // NEW: tracks if auth initialization is complete
+  error: string | null;
   login: (email: string, password: string) => Promise<ApiResponse<User>>;
   register: (userData: Omit<User, 'id'> & { password: string }) => Promise<ApiResponse<User>>;
   logout: () => Promise<void>;
-  googleAuth: (token: string) => Promise<ApiResponse<User>>;
-  franceConnectAuth: (code: string) => Promise<ApiResponse<User>>;
+  googleAuth: (code: string) => Promise<ApiResponse<User>>;
+  githubAuth: (code: string) => Promise<ApiResponse<User>>;
   refreshAuthToken: () => Promise<boolean>;
-  isAuthenticated: boolean;
-  loading: boolean;
-  error: string | null;
 }
 
 export interface Comment {
