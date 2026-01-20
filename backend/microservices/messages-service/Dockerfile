@@ -1,5 +1,5 @@
 # Build Image
-FROM node:current-slim
+FROM node:22
 
 # Args
 ARG CONT_IMG_VER=1.0.0
@@ -10,7 +10,8 @@ ARG GROUP_ID=433
 # Env
 ENV CONT_IMG_VER=${CONT_IMG_VER}
 ENV PORT=${SERVER_PORT}
-ENV NODE_ENV=production
+ENV NODE_ENV=dev
+ENV TAG="Messages Service"
 
 # Build env
 COPY . ./app

@@ -1,89 +1,298 @@
 # VigilanceFrance
+"Une France Vigilante, des habitants en sécurité"
 
-Une plateforme collaborative pour suivre et signaler les incidents partout en France.
-Ce projet est inspiré du 3ème projet du module Node.js et aspire à la notion de contribution dans la signalisation des dangers et à l'apport d'informations.
+## Vue d'ensemble
 
+VigilanceFrance est une plateforme de signalement d'incidents civiques permettant aux citoyens de signaler et suivre divers types d'incidents sur une carte interactive. Le projet utilise une architecture microservices déployée sur Kubernetes.
 
-## Équipe & Rôles
-- ACHOUCHI Rayane - Frontend & Design
-- VOVARD Mathéo - Backend, BDD & Microservices
-- MARQUES DINIS Joao Gabriel - Backend, Messages Microservice
+## Binôme
 
-## Caractéristiques
+- Rayane Achouchi
+- Joao Gabriel Marques-Dinis
 
-- Carte interactive des incidents avec Google Maps
-- Système d'authentification
-- Ajout et suivi d'incidents en temps réel
-- Filtrage des incidents par type et sévérité
-- Commentaires et discussions autour des incidents
+## Architecture
 
-## Technologies
+Le projet est composé de 5 microservices principaux :
 
-- React
-- TypeScript
-- Vite.js
-- Tailwind CSS
-- Shadcn/UI
-- Google Maps Platform
-- React Router
-- TypeScript
-- Socket.io
-- ExpressJS
-- 
+- **API Gateway** : Point d'entrée unique pour toutes les requêtes
+- **Auth Service** : Gestion de l'authentification (OAuth Google/GitHub)
+- **Maps Service** : Gestion des incidents et données géographiques
+- **Messages Service** : Gestion des messages et commentaires (WebSocket)
+- **Notifs Service** : Gestion des notifications par email (Bull Queue)
 
-## Installation
+**Infrastructure** :
+- MongoDB 8.0.4 pour la persistance des données
+- Redis 7.4.1 pour les sessions et le cache
+- Kubernetes/Minikube pour l'orchestration
 
-1. Clonez le dépôt :
-```bash
-git clone https://github.com/Math-Vov13/VigilanceFrance
-cd VigilanceFrance
+```
+┌─────────────────────────────────────────────────────────────┐
+│                         API Gateway                          │
+│                     (Port: 3000)                             │
+└──────────────┬──────────────┬───────────────┬───────────────┘
+               │              │               │
+       ┌───────▼─────┐  ┌────▼────┐   ┌──────▼────────┐
+       │Auth Service │  │Maps     │   │Messages       │
+       │(Port: 3001) │  │Service  │   │Service        │
+       └──────┬──────┘  │(3002)   │   │(3003)         │
+              │         └────┬────┘   └──────┬────────┘
+              │              │                │
+       ┌──────▼──────────────▼────────────────▼────────┐
+       │            MongoDB (27017)                      │
+       │         vigilance_france database              │
+       └─────────────────────────────────────────────────┘
+                          │
+       ┌──────────────────▼────────────────────────────┐
+       │            Redis (6379)                        │
+       │       Sessions & Cache                         │
+       └────────────────────────────────────────────────┘
 ```
 
-2. Installez les dépendances :
+## Prérequis
+
+- Docker
+- Minikube (8GB RAM minimum, 4 CPUs)
+- kubectl
+- Node.js 22
+- npm/pnpm
+
+## Installation et Déploiement
+
+### 1. Démarrer Minikube
+
 ```bash
-npm install
+minikube start --memory=8192 --cpus=4
+eval $(minikube docker-env)
 ```
 
-3. Configurez les variables d'environnement :
-```bash
-cp .env.example .env
-```
-Puis modifiez le fichier `.env` pour ajouter votre clé API Google Maps.
-
-4. Démarrez le serveur de développement :
-```bash
-npm run dev
-```
-
-5. Ouvrez [http://localhost:3000](http://localhost:3000) pour voir l'application.
-
-## Structure du projet
-
-- `src/components` : Composants réutilisables
-- `src/pages` : Pages principales de l'application
-- `src/context` : Contextes React pour la gestion d'état global
-- `src/hooks` : Hooks React personnalisés
-- `src/lib` : Fonctions utilitaires
-- `src/types` : Types TypeScript
-
-## Obtenir une clé API Google Maps
-
-1. Créez un compte sur [Google Cloud Platform](https://console.cloud.google.com/)
-2. Créez un nouveau projet
-3. Activez l'API Maps JavaScript
-4. Créez une clé API avec les restrictions appropriées
-5. Ajoutez cette clé dans votre fichier `.env`
-
-## Déploiement
-
-Pour construire l'application pour la production :
+### 2. Compiler les services TypeScript
 
 ```bash
+# Auth Service
+cd backend/microservices/auth-service
+npm run build
+
+# Maps Service
+cd ../maps-service
+npm run build
+
+# Messages Service
+cd ../messages-service
+npm run build
+
+# Notifs Service
+cd ../notifs-service
 npm run build
 ```
 
-Les fichiers de production seront générés dans le dossier `dist`.
+### 3. Construire les images Docker
 
-## Licence
+```bash
+# API Gateway
+cd backend/api-gateway
+docker build -t vigilance/api-gateway:latest .
 
-Ce projet est sous licence MIT.
+# Microservices
+cd ../microservices/auth-service
+docker build -t vigilance/auth-service:latest .
+
+cd ../maps-service
+docker build -t vigilance/maps-service:latest .
+
+cd ../messages-service
+docker build -t vigilance/mess-service:latest .
+
+cd ../notifs-service
+docker build -t vigilance/notifs-service:latest .
+```
+
+### 4. Déployer sur Kubernetes
+
+```bash
+cd /home/saphirdev/VigilanceFrance
+kubectl apply -f k8s/base/namespace.yaml
+kubectl apply -f k8s/base/secrets.yaml
+kubectl apply -f k8s/base/configmap.yaml
+kubectl apply -f k8s/databases/
+kubectl apply -f k8s/microservices/
+```
+
+### 5. Vérifier le déploiement
+
+```bash
+kubectl get pods -n vigilance-france
+```
+
+**screenshot: Status des pods Kubernetes montrant tous les services en Running**
+
+```bash
+kubectl logs -f <pod-name> -n vigilance-france
+```
+
+**screenshot: Logs d'un service montrant la connexion réussie à MongoDB et Redis**
+
+### 6. Accéder à l'application
+
+```bash
+minikube service api-gateway-service -n vigilance-france --url
+```
+
+L'API Gateway sera accessible sur l'URL fournie (exemple: `http://127.0.0.1:41007`)
+
+## Configuration
+
+La configuration se fait via ConfigMaps et Secrets Kubernetes :
+
+- **ConfigMap** (`k8s/base/configmap.yaml`) : Variables d'environnement non sensibles
+- **Secrets** (`k8s/base/secrets.yaml`) : Mots de passe et clés secrètes
+
+Variables importantes :
+- `MONGO_HOST`, `MONGO_PORT`, `MONGO_DB`, `MONGO_USER`, `MONGO_PASSWORD`
+- `REDIS_HOST`, `REDIS_PORT`, `REDIS_PSWD`
+- URLs des services pour l'API Gateway
+
+## Utilisation
+
+### Frontend (Local)
+
+Le frontend est conçu pour tourner localement (pas dans Kubernetes) :
+
+```bash
+cd client
+yarn install
+yarn dev
+```
+
+**screenshot: Page d'accueil de l'application**
+
+**screenshot: Page de connexion avec les boutons OAuth (Google/GitHub)**
+
+### Signaler un incident
+
+1. Se connecter via OAuth
+2. Cliquer sur la carte pour positionner l'incident
+3. Sélectionner le type d'incident
+4. Ajouter une description
+5. Soumettre
+
+**screenshot: Interface de signalement d'incident avec la carte interactive**
+
+**screenshot: Carte avec plusieurs incidents affichés avec leurs icônes**
+
+### API Endpoints
+
+#### Auth Service
+- `GET /health` - Health check
+- `POST /register` - Inscription
+- `POST /login` - Connexion
+- `GET /oauth/google` - OAuth Google
+- `GET /oauth/github` - OAuth GitHub
+
+#### Maps Service
+- `GET /health` - Health check
+- `GET /incidents` - Liste des incidents
+- `POST /incidents` - Créer un incident
+- `GET /incidents/:id` - Détails d'un incident
+
+#### Messages Service
+- WebSocket pour les messages en temps réel
+- `POST /comments` - Ajouter un commentaire
+
+#### Notifs Service
+- `POST /notify` - Envoyer une notification
+
+**screenshot: Réponse JSON du endpoint /health d'un service**
+
+## Monitoring
+
+### Vérifier l'état des services
+
+```bash
+# Liste des pods
+kubectl get pods -n vigilance-france
+
+# Liste des services
+kubectl get services -n vigilance-france
+
+# Logs d'un service
+kubectl logs -f <pod-name> -n vigilance-france
+```
+
+**screenshot: Liste des services Kubernetes avec leurs ports**
+
+### Tester la connectivité
+
+```bash
+# Depuis l'API Gateway vers un microservice
+kubectl exec -it <api-gateway-pod> -n vigilance-france -- wget -O- http://auth-service:3001/health
+```
+
+**screenshot: Test de connectivité réussi entre services**
+
+## Troubleshooting
+
+### Pod en CrashLoopBackOff
+```bash
+kubectl describe pod <pod-name> -n vigilance-france
+kubectl logs <pod-name> -n vigilance-france
+```
+
+Causes communes :
+- Erreurs de connexion MongoDB/Redis
+- Variables d'environnement manquantes
+- Health checks échouant
+
+### Erreur de connexion MongoDB
+
+Vérifier que `authSource: "admin"` est configuré dans les connexions Mongoose.
+
+### Images Docker non trouvées
+
+```bash
+eval $(minikube docker-env)
+docker images | grep vigilance
+```
+
+Reconstruire les images si nécessaire avec `--no-cache`.
+
+### Redémarrer un service
+
+```bash
+kubectl delete pod <pod-name> -n vigilance-france
+```
+
+Kubernetes recréera automatiquement le pod.
+
+## Technologies
+
+**Backend** :
+- Node.js 22 / TypeScript
+- Express.js
+- Mongoose (MongoDB ODM)
+- Bull (Queue Redis)
+- Passport.js (OAuth)
+- WebSocket (Socket.io)
+
+**Frontend** :
+- React
+- TypeScript
+- Leaflet (cartes)
+- Yarn
+
+**DevOps** :
+- Docker
+- Kubernetes / Minikube
+- MongoDB 8.0.4
+- Redis 7.4.1
+
+## Sécurité
+
+- Authentification OAuth 2.0 (Google, GitHub)
+- Sessions sécurisées avec Redis
+- Secrets Kubernetes pour données sensibles
+- authSource configuré pour MongoDB
+- Variables d'environnement pour configuration
+
+## Auteur
+
+Projet VigilanceFrance - "Une France Vigilante, des habitants en sécurité"

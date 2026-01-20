@@ -1,5 +1,5 @@
 # Build Image
-FROM node:current-slim
+FROM node:22
 
 # Args
 ARG CONT_IMG_VER=1.0.0
@@ -10,7 +10,11 @@ ARG GROUP_ID=433
 # Env
 ENV CONT_IMG_VER=${CONT_IMG_VER}
 ENV PORT=${SERVER_PORT}
-ENV NODE_ENV=production
+ENV NODE_ENV=dev
+ENV TAG="Notifs Service"
+ENV SMTP_HOST_PROVIDER="sandbox.smtp.mailtrap.io"
+ENV SMTP_USERNAME_PROVIDER="4351debbe2c1a8"
+ENV SMTP_PASSWORD_PROVIDER="7fd4ff128fdb28"
 
 # Build env
 COPY . ./app

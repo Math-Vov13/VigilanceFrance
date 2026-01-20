@@ -1,70 +1,199 @@
-import { Server } from "socket.io";
-import { getAllMessages } from './model/db_messages';
-import jwt from 'jsonwebtoken';
-import { TokenPayload } from './security/jwt';
+import { Server, Socket } from "socket.io";
+import { addMessage } from './models/db_messages'; //  get ALL Messages: optionnel (ligne  115)
+import http from 'http';
+import { decode_AccessToken } from "./security/jwt";
+import { createMessage } from "./schemas/message_sc";
+import { Request } from "express";
+import morgan from "morgan";
+import cookieParser from "cookie-parser";
+import { redisClient } from "./models/redis-connector";
+import { sessionMiddleware } from "./sessionStorage";
+import { getUserById } from "./models/users_db";
+import { z } from "zod";
 
-const JWT_SECRET = process.env.JWT_SECRET || 'scecretcte_ckeyekeykeykey';
 
-const io = new Server(3004, {
-  cors: {
-    origin: "*",
-  }
-});
+// export function extractUserFromSocket(socket: Socket) {
+//   const token =
+//     socket.handshake.auth?.token ||
+//     socket.handshake.headers?.authorization?.split(" ")[1] ||
+//     socket.handshake.headers?.cookie?.split("Atk=")[1];
 
-const activeUsers = new Map<string, string>(); //userid & socketid
+//   if (!token) return null;
 
-io.on("connection", (socket) => {
-  console.log(`Client connected: ${socket.id}`);
+//   try {
+//     const user = decode_AccessToken(token, socket.handshake.headers["user-agent"] as string);
+//     return user;
+//   } catch (err) {
+//     return null;
+//   }
+// }
 
-  socket.on("authenticate", (token: string) => {
+
+
+const activeUsers = new Map<string, string>(); // userid & socketid
+const INCOMING_MESSAGE_CHANNEL = "new_message";
+
+
+export function setupSocket(server: http.Server) {
+  const io = new Server(server, {
+    cors: {
+      "origin": "http://localhost:3000",
+      "credentials": true,
+      "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      "allowedHeaders": ["Content-Type", "Authorization"],
+      "exposedHeaders": ["Content-Type", "Authorization"]
+    }
+  });
+
+  io.engine.use(morgan('tiny'));
+  io.engine.use(cookieParser());
+  io.engine.use(
+      sessionMiddleware
+  );
+
+
+  // Middlewares
+  io.use(async (socket, next) => {
+    console.log("Socket connection attempt:", socket.id);
+    const token = socket.handshake.headers?.cookie?.split("Atk=")[1].split(";")[0]
+      // socket.handshake.auth?.token ||
+      // socket.handshake.headers?.authorization?.split(" ")[1] ||
+
+    if (!token) {
+      console.log("No Token found!");
+      return next(new Error("No Token"));
+    };
+
     try {
-      const payload = jwt.verify(token, JWT_SECRET) as TokenPayload;
-      const userId = payload.userId;
-
-      if (activeUsers.has(userId)) {
-        const previousSocketId = activeUsers.get(userId);
-        if (previousSocketId && previousSocketId !== socket.id) { // déco ancien socket (verif par rapport a actuelle)
-          const oldSocket = io.sockets.sockets.get(previousSocketId);
-          if (oldSocket) {
-            oldSocket.emit("duplicate_session");
-            oldSocket.disconnect(true);
-          }
-        }
+      const user_id = decode_AccessToken(token, socket.handshake.headers["user-agent"] as string);
+      if (!user_id) {
+        console.log("Invalid Token!");
+        return next(new Error("authentication error"));
       }
 
-      activeUsers.set(userId, socket.id);
-      (socket as any).user = payload;
+      // Verify User with id in DB !
+      const user = await getUserById(user_id);
+      console.log("User found:", user);
 
-      console.log("Authenticated user:", payload);
-      sendAllMessages(socket);
+      socket.data.user_id = user_id;
+      socket.data.user = user;
+      console.log(`User ID from token: ${socket.data.user_id}`);
 
     } catch (err) {
-      console.error("Authentication failed:", err);
-      socket.emit("unauthorized");
+      console.log("Invalid Token! error:", err);
+      return next(new Error("authentication error"));
     }
+
+    console.log(`User authenticated: ${socket.data.user_id}`);
+
+    next();
+    // const token =
+    //   socket.handshake.auth?.token ||
+    //   socket.handshake.headers?.authorization?.split(" ")[1] ||
+    //   socket.handshake.headers?.cookie?.split("Atk=")[1];
+
+    // if (!token) { // Le Token est  obligatoire.
+    //   console.log("No Token found!");
+    //   return next(new Error("No Token"));
+    // }
+
+    // try {
+    //   const PL = jwt.verify(token, JWT_SECRET) as tkPL; // Verification du Payload (PL) / ressource -> https://www.npmjs.com/package/jsonwebtoken#jwtverifytoken-secretorpublickey-options-callback
+    //   (socket as any).user = PL;
+    //   next();
+    // } catch (e) {
+    //   console.log("Token invalide :/", e);
+    //   return next(new Error("authentication error"));
+    // }
   });
 
-  socket.on("disconnect", () => {
-    for (const [userId, socketId] of activeUsers.entries()) {
-      if (socketId === socket.id) {
-        activeUsers.delete(userId);
-        console.log(`User ${userId} disconnected and session cleared.`);
-        break;
+
+
+  io.on("connection", (socket) => {
+    // const session = (socket.request as Request).session;
+
+    console.log(`Client connected: ${socket.id}${socket.data ? ` (user: ${socket.data.user_id})` : " (unauthenticated)"}`);
+    if (socket.data.user.email === undefined) {
+      return new Error("Session ID is not valid!");
+    }
+
+    if (socket.data) {
+      activeUsers.set(socket.data.user_id, socket.id);
+    }
+
+    const issue_id = socket.handshake.query?.issue_id as string;
+    if (!issue_id) {
+      console.log("Erreur MarkerID");
+      return new Error("MarkerID NotFound");
+    }
+
+    socket.join(issue_id);
+    console.log(`${socket.id} joined comments section (room) ${issue_id}`);
+    // sendAllMessages(socket, markerID);
+
+    socket.on("message", async (data) => {
+      if (socket.data.user.email === undefined) {
+        return new Error("Session ID is not valid!");
       }
-    }
+
+      let newMessage = null;
+      try {
+        console.log("Received message data:", JSON.stringify(data, null, 2));
+        console.log("Data type:", typeof data);
+        console.log("Data keys:", Object.keys(data));
+
+        newMessage = await createMessage.parseAsync(data);
+        console.log("✅ Message validated successfully:", newMessage);
+      } catch(err) {
+        console.log("❌ Error validating message schema:", err);
+        if (err instanceof z.ZodError) {
+          console.log("Zod validation errors:", JSON.stringify(err.errors, null, 2));
+        }
+        socket.emit("error", `Schema not valid! ${err instanceof z.ZodError ? JSON.stringify(err.errors) : err}`);
+        return;
+      }
+
+
+      if (!socket.data) {
+        console.warn(`Non-authenticated user tried to send message: ${socket.id}`);
+        socket.emit("error_no_auth");
+        return;
+      }
+
+      if (issue_id) {
+        const mess = await addMessage(issue_id, socket.data.user_id, socket.data.user.lastName as string, socket.data.user.firstName as string, newMessage.message);
+
+        // PUB EVENT (add message)
+        await redisClient.publish(INCOMING_MESSAGE_CHANNEL, JSON.stringify(mess));
+
+        io.to(issue_id).emit("message", mess);
+      }
+    });
+
+    socket.on("disconnect", () => {
+      if (socket.data && activeUsers.get(socket.data.userId) === socket.id) {
+        activeUsers.delete(socket.data.userId);
+        console.log(`User ${socket.data.userId} disconnected and session cleared.`);
+      }
+    });
   });
-});
 
+  // async function sendAllMessages(socket: Socket, markerID?: string) {
 
+  //   try {
+  //     /* Optionnel - Logique Test pour retourner getAllMessages() si le MarkerID n'est pas présent.
+  //     if (!markerID) {
+  //       const messages = await getAllMessages();
+  //       socket.emit("all_messages", messages);
+  //       return;
+  //     }
+  //     */
 
-async function sendAllMessages(socket: any) {
-  try {
-    const messages = await getAllMessages(); // de db_messages.ts
-    socket.emit("all_messages", messages); // emit --> client
-  } catch (err) { // si erreur
-    console.error("Error fetching messages:", err); //debug
-    socket.emit("error_fetching_messages");
-  }
+  //     const messages = await getMessagesByMarkID(markerID as string);
+  //     socket.emit("all_messages_by_marker", messages);
+  //   } catch (err) {
+  //     console.error("Error fetching messages:", err);
+  //     socket.emit("error_fetching_messages");
+  //   }
+  // }
 }
-
-

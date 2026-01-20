@@ -1,26 +1,58 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
-import http from 'http';
 import os from 'os';
 import cookieParser from 'cookie-parser';
-import messagesRouter from './endpoint/messages';
-// import { setupWebSocket } from './ws';
-// import { setupSocket } from './socket';
+import messagesRouter from './endpoints/messages';
+import { setupSocket } from './socket';
 
+import "./models/mongo-connector";
+import { sessionMiddleware } from './sessionStorage';
 
 const app = express();
 const PORT = process.env["PORT"] || 3004;
 
 
+declare module "express-session" {
+    interface SessionData {
+        connected: boolean;
+        user_id: string;
+        firstName: string;
+        lastName: string;
 
+        last_pos_updated: string;
+
+        last_lat: number;
+        last_lng: number;
+    }
+}
+
+
+// Middlewares
 app.use(cors({
-    "origin": "*",
-    "credentials": true
+    "origin": "http://localhost:3000",
+    "credentials": true,
+    "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    "allowedHeaders": ["Content-Type", "Authorization"],
+    "exposedHeaders": ["Content-Type", "Authorization"]
 }));
 app.use(morgan("dev"));
 app.use(express.json());
 app.use(cookieParser());
+app.use(
+    sessionMiddleware
+    // session({
+    //     name: "SID",
+    //     store: new connectRedis.RedisStore({
+    //        client: redisClient
+    //     }),
+    //     secret: process.env.REDIS_SESSION_SECRET || 'your-secret-key', // Replace with a secure secret
+    //     resave: false,
+    //     saveUninitialized: false,
+    //     cookie: { sameSite: "lax", httpOnly: true, secure: process.env.NODE_ENV === "production" },
+    // })
+);
+
 
 app.use('/messages', messagesRouter);
 
@@ -29,7 +61,7 @@ app.get('/', (req: Request, res: Response) => {
     return;
 });
 
-// Endpoint de health check
+// health check
 app.get("/health", (req: Request, res: Response) => {
     res.setHeader("Cache-Control", "no-cache");
     // Understanding Health Check inside MicroServices (https://testfully.io/blog/api-health-check-monitoring/)
@@ -53,15 +85,16 @@ app.get("/health", (req: Request, res: Response) => {
 });
 
 const server = app.listen(PORT, () => {
-    console.log(`[server]: Running Server on http://localhost:${PORT}`);
+    console.log(`[${process.env.TAG}]: Running Server on http://localhost:${PORT}`);
 });
 
+setupSocket(server);
 // setupWebSocket(server);
-// setupSocket(server);
 
 process.on("SIGTERM", () => {
     console.debug('SIGTERM signal received: closing HTTP server');
     server.close(() => {
         console.debug('HTTP server closed!');
-    });
-});
+        console.log(`[${process.env.TAG || 'server'}]: Server closed!`);
+    })
+})

@@ -1,0 +1,34 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vigilance-config
+  namespace: vigilance-france
+data:
+  # MongoDB Configuration
+  MONGO_HOST: "mongodb-service"
+  MONGO_PORT: "27017"
+  MONGO_DB: "vigilance_france"
+  MONGO_USER: "admin"
+
+  # Redis Configuration
+  REDIS_HOST: "redis-service"
+  REDIS_PORT: "6379"
+
+  # API Gateway Configuration
+  API_GATEWAY_URL: "http://api-gateway-service:3000"
+
+  # Service URLs
+  AUTH_SERVICE_URL: "http://auth-service:80"
+  MAPS_SERVICE_URL: "http://maps-service:80"
+  MESS_SERVICE_URL: "http://mess-service:80"
+  NOTIFS_SERVICE_URL: "http://notifs-service:80"
+
+  # Environment
+  NODE_ENV: "production"
+
+  # Session
+  REDIS_SESSION_SECRET: "your-session-secret-key"
+
+  # OAuth Redirect URIs (vous devrez adapter selon votre domaine)
+  GOOGLE_REDIRECT_URI: "http://localhost:3000/auth/callback"
+  GITHUB_REDIRECT_URI: "http://localhost:3000/auth/callback"

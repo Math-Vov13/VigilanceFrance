@@ -10,54 +10,128 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [skipInitialization, setSkipInitialization] = useState(false);
+
+  const refreshAuthToken = useCallback(async (): Promise<boolean> => {
+    try {
+      const refreshToken = tokenService.getRefreshToken();
+      if (!refreshToken) {
+        console.log('❌ No refresh token available');
+        return false;
+      }
+
+      console.log('🔄 Attempting to refresh token...');
+      const { status } = await authApi.refreshToken();
+      if (status === 200) {
+        console.log('✅ Token refreshed successfully');
+        return true;
+      }
+      console.log('❌ Token refresh failed with status:', status);
+      return false;
+    } catch (err) {
+      console.error('❌ Failed to refresh token:', err);
+      tokenService.clearRefreshToken();
+      setUser(null);
+      return false;
+    }
+  }, []);
 
   useEffect(() => {
     const initializeAuth = async () => {
-      // Check for the refresh token in the cookies
-      const token = tokenService.getRefreshToken();
-      if (!token) {
+      console.log('🚀 Starting auth initialization...');
+
+      // Skip initialization if user was just authenticated (prevents duplicate validation)
+      if (skipInitialization) {
+        console.log('⏭️ Skipping initialization - user already authenticated');
         setLoading(false);
+        setIsInitialized(true);
         return;
       }
 
-      // If a refresh token exists, verify the token
+      // Check if refresh token exists before attempting verification
+      const refreshToken = tokenService.getRefreshToken();
+
+      if (!refreshToken) {
+        // No tokens = user is not logged in, which is fine for public pages
+        console.log('ℹ️ No refresh token found - user not authenticated');
+        setUser(null);
+        setLoading(false);
+        setIsInitialized(true);
+        return;
+      }
+
       try {
         const { data } = await authApi.verifyToken();
-        if (data?.data?.id) {
+        console.log('📦 Full API Response:', data);
+
+        // Normalize the structure — handle both wrapped and raw responses
+        const profile = data?.data || data;
+
+        if (profile && typeof profile === 'object' && '_id' in profile) {
+          console.log('✅ User profile found:', profile);
           setUser({
-            id: data.data.id,
-            firstName: data.data.firstName || '',
-            lastName: data.data.lastName || '',
-            email: data.data.email || '',
-            profileImage: data.data.profileImage || undefined,
+            _id: (profile as User)._id,
+            firstName: (profile as User).firstName || '',
+            lastName: (profile as User).lastName || '',
+            email: (profile as User).email || '',
+            profileImage: (profile as User).profileImage ?? undefined,
           });
+        } else {
+          console.warn('⚠️ No valid user data found in profile response');
+          setUser(null);
         }
-      } catch (err) {
-        console.error('Auth token verification failed:', err);
-        tokenService.clearRefreshToken(); // Clear token on failure
+      } catch (err: any) {
+        if (err.response?.status === 401) {
+          // Access token expired, try to refresh
+          console.warn('🔄 Access token expired, trying refresh...');
+          const success = await refreshAuthToken();
+          
+          if (success) {
+            // Retry verification after successful refresh
+            try {
+              const { data } = await authApi.verifyToken();
+              const profile = data?.data || data;
+              if (profile && typeof profile === 'object' && '_id' in profile) {
+                setUser({
+                  _id: (profile as User)._id,
+                  firstName: (profile as User).firstName || '',
+                  lastName: (profile as User).lastName || '',
+                  email: (profile as User).email || '',
+                  profileImage: (profile as User).profileImage ?? undefined,
+                });
+              } else {
+                setUser(null);
+              }
+            } catch (retryErr) {
+              console.error('❌ Failed to verify after refresh:', retryErr);
+              setUser(null);
+              tokenService.clearRefreshToken();
+            }
+          } else {
+            // Refresh failed - clear everything
+            setUser(null);
+            tokenService.clearRefreshToken();
+          }
+        } else {
+          // Other errors (network, server error, etc.)
+          console.error('❌ Auth verification failed:', err);
+          setUser(null);
+          // Don't clear tokens on network errors - might be temporary
+          if (err.response?.status >= 400 && err.response?.status < 500) {
+            // Clear tokens only on client errors (4xx)
+            tokenService.clearRefreshToken();
+          }
+        }
       } finally {
         setLoading(false);
+        setIsInitialized(true);
+        console.log('✅ Auth initialization complete');
       }
     };
 
     initializeAuth();
-  }, []);
-
-  const refreshAuthToken = useCallback(async (): Promise<boolean> => {
-    try {
-      const { data } = await authApi.refreshToken();
-      if (data.connected && data._rft) {
-        tokenService.setRefreshToken(data._rft); // Store the new refresh token
-        return true;
-      }
-      return false;
-    } catch (err) {
-      console.error('Failed to refresh token:', err);
-      tokenService.clearRefreshToken(); // Clear invalid refresh token
-      setUser(null); // Log the user out if the token refresh fails
-      return false;
-    }
-  }, []);
+  }, [refreshAuthToken, skipInitialization]);
 
   const login = useCallback(async (email: string, password: string): Promise<ApiResponse<User>> => {
     setLoading(true);
@@ -65,43 +139,96 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     try {
       const { data } = await authApi.login(email, password);
-      if (!data.connected || !data._rft) throw new Error('Échec de la connexion');
+      console.log('🔍 Login Response:', data);
 
-      tokenService.setRefreshToken(data._rft); // Store the refresh token
+      if (!data._rft) {
+        console.error('❌ No refresh token in login response!', data);
+        throw new Error('Échec de la connexion');
+      }
 
-      // Create user object from the login response
+      tokenService.setRefreshToken(data._rft);
+      console.log('✅ Login: Refresh token stored:', data._rft);
+
       const userObject: User = {
-        id: 'temp-id', // You should replace this with actual user ID from response if available
-        firstName: data.user.split(/(?=[A-Z])/)[0] || '',
-        lastName: data.user.split(/(?=[A-Z])/).slice(1).join('') || '',
+        _id: data.user,
+        firstName: '',
+        lastName: '',
         email,
-        profileImage: undefined, // Set this from data if available
+        profileImage: undefined,
       };
 
-      setUser(userObject); // Update user state
+      setUser(userObject);
+
+      try {
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        const profileResponse = await authApi.verifyToken();
+        const userData = profileResponse.data?.data;
+
+        if (userData?._id || userData?._id) {
+          const userId = userData._id || userData._id;
+          const updatedUser = {
+            ...userObject,
+            id: userId.toString(),
+            firstName: userData.firstName || '',
+            lastName: userData.lastName || '',
+            email: userData.email || email,
+            profileImage: userData.profileImage,
+          };
+          setUser(updatedUser);
+          setSkipInitialization(true); // Prevent duplicate validation on next mount
+          setIsInitialized(true);
+          return { success: true, message: 'Connexion réussie', data: updatedUser };
+        }
+      } catch (profileErr) {
+        console.error('Failed to fetch profile after login:', profileErr);
+      }
+
+      setSkipInitialization(true); // Prevent duplicate validation on next mount
+      setIsInitialized(true);
       return { success: true, message: 'Connexion réussie', data: userObject };
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erreur lors de la connexion';
       setError(message);
+      tokenService.clearRefreshToken();
       throw new Error(message);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const register = useCallback(async (userData: Omit<User, 'id'> & { password: string }) => {
+  const register = useCallback(async (userData: Omit<User, 'id'> & { password: string }): Promise<ApiResponse<User>> => {
     setLoading(true);
     setError(null);
 
     try {
       const { data } = await authApi.register(userData);
-      if (!data.connected || !data._rft) throw new Error('Échec de l\'inscription');
+      console.log('🔍 Register Response:', data);
 
-      tokenService.setRefreshToken(data._rft); // Store the refresh token
-      setUser({ ...userData, id: 'temp-id' }); // Replace 'temp-id' with actual user ID
+      if (!data._rft) {
+        console.error('❌ No refresh token in register response!', data);
+        throw new Error('Échec de l\'inscription');
+      }
+
+      tokenService.setRefreshToken(data._rft);
+      console.log('✅ Register: Refresh token stored:', data._rft);
+
+      const userObject: User = {
+        _id: data.user,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        email: userData.email,
+        profileImage: userData.profileImage,
+      };
+
+      setUser(userObject);
+      setSkipInitialization(true); // Prevent duplicate validation on next mount
+      setIsInitialized(true);
+      return { success: true, message: 'Inscription réussie', data: userObject };
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erreur lors de l\'inscription';
       setError(message);
+      tokenService.clearRefreshToken();
       throw new Error(message);
     } finally {
       setLoading(false);
@@ -111,13 +238,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = useCallback(async () => {
     setLoading(true);
     try {
-      await authApi.logout(); // API call to handle logout if necessary
+      // Call backend logout endpoint
+      await authApi.logout();
+      console.log('✅ Logout request successful');
     } catch (err) {
-      console.error('Logout failed:', err);
+      console.error('❌ Logout request failed:', err);
+      // Continue with cleanup even if backend fails
     } finally {
-      tokenService.clearRefreshToken(); // Clear the refresh token on logout
-      setUser(null); // Clear user data
+      // Always clear local state and tokens
+      tokenService.clearRefreshToken();
+      setUser(null);
+      setSkipInitialization(false); // Reset flag so next login can re-validate
       setLoading(false);
+
+      // Optional: Force reload to clear any remaining cookies
+      // Uncomment if cookie clearing issues persist
+      // setTimeout(() => window.location.href = '/auth', 100);
     }
   }, []);
 
@@ -127,33 +263,53 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     try {
       const { data } = await providerFn(tokenOrCode);
-      tokenService.setRefreshToken(data.data.refreshToken); // Store the new refresh token
-      setUser(data.data.user); // Set user from the OAuth provider
-      return { success: data.success, message: data.message, data: data.data.user };
+      console.log('🔍 OAuth Response:', data);
+
+      // Extract refresh token from response
+      const refreshToken = data.data?.refreshToken || data._rft;
+      console.log('🔑 Refresh Token extracted:', refreshToken);
+
+      if (!refreshToken) {
+        console.error('❌ No refresh token in response!', data);
+        throw new Error('No refresh token received');
+      }
+
+      tokenService.setRefreshToken(refreshToken);
+      console.log('✅ Refresh token stored in localStorage');
+
+      setUser(data.data?.user ?? null);
+      setSkipInitialization(true); // ✅ Prevent duplicate validation - OAuth already returned full user data
+      setIsInitialized(true);
+      console.log('✅ OAuth complete - skipping duplicate initialization');
+      return { success: data.success, message: data.message, data: data.data?.user };
     } catch (err) {
       const msg = (err as AxiosError<ApiResponse<null>>).response?.data?.message ?? errorMessage;
       setError(msg);
+      tokenService.clearRefreshToken();
       throw new Error(msg);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const googleAuth = (token: string) => handleOAuth(authApi.googleAuth, token, 'Erreur Google Auth');
-  const franceConnectAuth = (code: string) => handleOAuth(authApi.franceConnectAuth, code, 'Erreur FranceConnect');
+  const googleAuth = useCallback((token: string) => handleOAuth(authApi.googleAuth, token, 'Erreur Google Auth'), [handleOAuth]);
+  const githubAuth = useCallback((code: string) => handleOAuth(authApi.githubAuth, code, 'Erreur GitHub Auth'), [handleOAuth]);
+  const franceConnectAuth = useCallback((code: string) => handleOAuth(authApi.franceConnectAuth, code, 'Erreur FranceConnect'), [handleOAuth]);
 
   const contextValue = useMemo(() => ({
     user,
-    isAuthenticated: !!user, // Check if user exists for authentication status
+    isAuthenticated: !!user,
     loading,
+    isInitialized,
     error,
     login,
     register,
     logout,
     googleAuth,
+    githubAuth,
     franceConnectAuth,
     refreshAuthToken,
-  }), [user, loading, error, login, register, logout, googleAuth, franceConnectAuth, refreshAuthToken]);
+  }), [user, loading, isInitialized, error, login, register, logout, googleAuth, githubAuth, franceConnectAuth, refreshAuthToken]);
 
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
 };

@@ -3,32 +3,47 @@ import { body_schema_validation } from "../middlewares/verify_schema";
 import { IssueCreate } from "../schemas/marker_sc";
 import { verify_access_token } from "../middlewares/verify_aToken";
 import { createIssue, getIssues } from "../models/marker_db";
+import { createMessagesDoc } from "../models/messages_db";
+import { redisClient } from "../models/redis-connector";
 
 export const router = Router();
 
+const CREATE_ISSUE_CHANNEL = "create_issue";
 
 
 router.get("/", (req: Request, res: Response) => {
-    res.send("Markers endpoint");
+    res.send("Issues endpoint");
 })
 
 
-router.get("/show", async (req: Request, res: Response) => {
+router.get("/show", verify_access_token(false), async (req: Request, res: Response) => {
     const results = await getIssues();
+    if (! results) {
+        res.sendStatus(500);
+        return;
+    }
 
     res.send({
-        length: results.length,
-        content: results
+        "connected": req.access_token_content !== undefined,
+        "length": results.length,
+        "content": results
     });
 })
 
-router.post("/create", verify_access_token, body_schema_validation(IssueCreate), async (req: Request, res: Response) => {
+router.post("/create", verify_access_token(true), body_schema_validation(IssueCreate), async (req: Request, res: Response) => {
     const issue = await createIssue(req.access_token_content as string, req.body);
-
     if (!issue) {
         res.sendStatus(409);
         return;
     }
+
+    const messages = await createMessagesDoc(issue.id);
+    if (!messages) {
+        console.error("Error occured while trying to create document from 'Messages' Collection!");
+    }
+
+    // PUB EVENT (create issue)
+    redisClient.publish(CREATE_ISSUE_CHANNEL, JSON.stringify(issue));
 
     res.status(201).send({
         "created": true,

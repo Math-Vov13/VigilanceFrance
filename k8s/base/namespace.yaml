@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: vigilance-france
+  labels:
+    name: vigilance-france
+    environment: development

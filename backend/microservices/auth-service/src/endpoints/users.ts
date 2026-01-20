@@ -20,5 +20,6 @@ router.get("/profile", verify_access_token, async (req: Request, res: Response) 
         return;
     }
 
+    res.set('Cache-Control', 'no-store');
     res.status(200).json(user);
 });
