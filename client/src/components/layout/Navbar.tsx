@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../ui/button';
@@ -9,23 +10,81 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
-import { Home, LayoutDashboard, MapPin, Cloud, Bell, User, Settings, LogOut, Shield, FileWarning } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Home, LayoutDashboard, MapPin, Cloud, Bell, User, Settings, LogOut, LogIn, Menu, X } from 'lucide-react';
+import { HiMoon } from "react-icons/hi";
+import { motion, AnimatePresence } from 'framer-motion';
+import { cn } from '@/lib/utils';
 
-type NavbarProps = {
-  showSearch?: boolean;
-};
-
-export function Navbar({ showSearch = false }: NavbarProps) {
+export function Navbar() {
   const { user, isAuthenticated, logout, loading } = useAuth();
-  
-  const initials = user 
-    ? `${user.firstName.charAt(0)}${user.lastName.charAt(0)}` 
-    : '';
+  const [location, setLocation] = useState<{ city: string; lat: number; lon: number } | null>(null);
+  const [weather, setWeather] = useState<number | null>(null);
+  const [loadingWeather, setLoadingWeather] = useState(true);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const initials = user ? `${user.firstName.charAt(0)}${user.lastName.charAt(0)}` : '';
+
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          const { latitude, longitude } = pos.coords;
+          try {
+            const geoRes = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
+            );
+            const geoData = await geoRes.json();
+
+            setLocation({
+              city: geoData.address.city || geoData.address.town || geoData.address.village || "Unknown",
+              lat: latitude,
+              lon: longitude,
+            });
+
+            const apiKey = import.meta.env.VITE_WEATHER_API_KEY;
+            const weatherRes = await fetch(
+              `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&units=metric&appid=${apiKey}`
+            );
+            const weatherData = await weatherRes.json();
+            setWeather(Math.round(weatherData.main.temp));
+          } catch (err) {
+            console.error("Error fetching location/weather:", err);
+          } finally {
+            setLoadingWeather(false);
+          }
+        },
+        (err) => {
+          console.error("Geolocation denied:", err);
+          setLoadingWeather(false);
+        }
+      );
+    } else {
+      setLoadingWeather(false);
+    }
+  }, []);
+
+  const navLinks = (
+    <>
+      <Link to="/" onClick={() => setMobileOpen(false)}>
+        <Button variant="ghost" className="text-gray-300 hover:text-white hover:bg-gray-700/50 w-full justify-start">
+          <Home className="w-4 h-4 mr-2" /> Home
+        </Button>
+      </Link>
+      <Link to="/monitoring" onClick={() => setMobileOpen(false)}>
+        <Button variant="ghost" className="text-gray-300 hover:text-white hover:bg-gray-700/50 w-full justify-start">
+          <LayoutDashboard className="w-4 h-4 mr-2" /> Monitoring
+        </Button>
+      </Link>
+      <Link to="/map" onClick={() => setMobileOpen(false)}>
+        <Button variant="ghost" className="text-gray-300 hover:text-white hover:bg-gray-700/50 w-full justify-start">
+          <MapPin className="w-4 h-4 mr-2" /> Map
+        </Button>
+      </Link>
+    </>
+  );
 
   return (
     <>
-      <motion.nav 
+      <motion.nav
         className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 border-b border-gray-700/50 dark:border-gray-800/50 backdrop-blur-xl shadow-lg"
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
@@ -36,67 +95,44 @@ export function Navbar({ showSearch = false }: NavbarProps) {
             {/* Left Section */}
             <div className="flex items-center gap-6">
               <Link to="/" className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center shadow-lg glow-blue">
-                  <Shield className="w-5 h-5 text-white" />
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                    VigilanceFrance
-                  </span>
-                  <span className="text-xs text-gray-400 hidden sm:block">Sécurité collective</span>
-                </div>
+                <HiMoon className="w-6 h-6 text-white" />
+                <span className={cn("text-xl font-bold text-white leading-none italic", "font-exo2")}>
+                  Sentinal
+                </span>
               </Link>
             </div>
 
             {/* Center Section - Desktop */}
             <div className="hidden md:flex items-center gap-1">
-              <Link to="/">
-                <Button variant="ghost" className="text-gray-300 hover:text-white hover:bg-gray-700/50">
-                  <Home className="w-4 h-4 mr-2" />
-                  Overview
-                </Button>
-              </Link>
-              <Link to="/dashboard">
-                <Button variant="ghost" className="text-gray-300 hover:text-white hover:bg-gray-700/50">
-                  <LayoutDashboard className="w-4 h-4 mr-2" />
-                  Monitoring
-                </Button>
-              </Link>
-              <Link to="/map">
-                <Button variant="ghost" className="text-gray-300 hover:text-white hover:bg-gray-700/50">
-                  <MapPin className="w-4 h-4 mr-2" />
-                  Map
-                </Button>
-              </Link>
-              <Link to="/reports">
-                <Button variant="ghost" className="text-gray-300 hover:text-white hover:bg-gray-700/50">
-                  <FileWarning className="w-4 h-4 mr-2" />
-                  Reports
-                </Button>
-              </Link>
+              {navLinks}
             </div>
 
             {/* Right Section */}
             <div className="flex items-center gap-3">
+              {/* Location & Weather */}
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="text-gray-300 hover:text-white hover:bg-gray-700/50 relative hidden sm:flex"
-                title="Localisation"
+                className="text-gray-300 hover:text-white hover:bg-gray-700/50 relative hidden sm:flex px-8"
+                title={location ? location.city : "Detecting location..."}
               >
                 <MapPin className="w-5 h-5" />
+                <span className='lg:block hidden'>{location ? location.city : "Detecting location..."}</span>
               </Button>
-              
+
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="text-gray-300 hover:text-white hover:bg-gray-700/50 hidden sm:flex"
-                title="Météo"
+                className="text-gray-300 hover:text-white hover:bg-gray-700/50 hidden sm:flex px-8"
+                title="Weather"
               >
                 <Cloud className="w-5 h-5" />
-                <span className="ml-1 text-sm">18°</span>
+                <span className="ml-1 text-sm">
+                  {loadingWeather ? "..." : weather !== null ? `${weather}°` : "--"}
+                </span>
               </Button>
-              
+
+              {/* Notifications */}
               <Button 
                 variant="ghost" 
                 size="icon" 
@@ -106,58 +142,80 @@ export function Navbar({ showSearch = false }: NavbarProps) {
                 <Bell className="w-5 h-5" />
                 <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
               </Button>
+
+              {/* User */}
               {loading ? (
                 <div className="w-10 h-10 rounded-full bg-gray-700 animate-pulse"></div>
-              ) : (
-              isAuthenticated ? (
+              ) : isAuthenticated ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0 overflow-hidden border-2 border-gray-700 hover:border-blue-500 transition-colors">
                       <Avatar>
                         <AvatarImage src={user?.profileImage} alt={`${user?.firstName} ${user?.lastName}`} />
-                        <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+                        <AvatarFallback className="bg-gray-950 dark text-white">
                           {initials}
                         </AvatarFallback>
                       </Avatar>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-56 mt-1 bg-gray-900 border-gray-800 text-gray-100" align="end">
-                    <div className="flex items-center justify-start gap-2 p-2 bg-gradient-to-r from-gray-800 to-gray-900">
-                      <div className="flex flex-col space-y-0.5 leading-none">
-                        <p className="font-medium text-sm text-white">{user?.firstName} {user?.lastName}</p>
-                        <p className="text-xs text-gray-400">{user?.email}</p>
-                      </div>
+                    <div className="flex flex-col gap-2 p-2">
+                      <p className="text-white font-medium">{user?.firstName} {user?.lastName}</p>
+                      <p className="text-gray-400 text-sm">{user?.email}</p>
                     </div>
                     <DropdownMenuSeparator className="bg-gray-800" />
-                    <DropdownMenuItem className="cursor-pointer hover:bg-gray-800 focus:bg-gray-800 text-gray-300">
-                      <User className="mr-2 h-4 w-4 text-blue-400" />
-                      <span>Mon profil</span>
+                    <DropdownMenuItem className="hover:bg-gray-800">
+                      <User className="mr-2 h-4 w-4 text-blue-400" /> Profile
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="cursor-pointer hover:bg-gray-800 focus:bg-gray-800 text-gray-300">
-                      <MapPin className="mr-2 h-4 w-4 text-purple-400" />
-                      <span>Mes signalements</span>
+                    <DropdownMenuItem className="hover:bg-gray-800">
+                      <MapPin className="mr-2 h-4 w-4 text-purple-400" /> My Reports
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="cursor-pointer hover:bg-gray-800 focus:bg-gray-800 text-gray-300">
-                      <Settings className="mr-2 h-4 w-4 text-gray-400" />
-                      <span>Paramètres</span>
+                    <DropdownMenuItem className="hover:bg-gray-800">
+                      <Settings className="mr-2 h-4 w-4 text-gray-400" /> Settings
                     </DropdownMenuItem>
                     <DropdownMenuSeparator className="bg-gray-800" />
-                    <DropdownMenuItem onClick={() => logout()} className="cursor-pointer hover:bg-red-900/20 focus:bg-red-900/20 text-red-400">
-                      <LogOut className="mr-2 h-4 w-4" />
-                      <span>Déconnexion</span>
+                    <DropdownMenuItem onClick={() => logout()} className="hover:bg-red-900/20 text-red-400">
+                      <LogOut className="mr-2 h-4 w-4" /> Logout
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : (
                 <Link to="/auth">
-                  <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white shadow-lg hover-lift">
-                    Connexion
+                  <Button>
+                    <LogIn className="w-4 h-4 mr-2" /> Sign In
                   </Button>
                 </Link>
-              ))}
+              )}
+
+              {/* Mobile Menu Button */}
+              <Button
+                variant="outline"
+                size="icon"
+                className="ml-2 md:hidden text-gray-300 hover:text-white hover:bg-gray-700/50"
+                onClick={() => setMobileOpen(!mobileOpen)}
+              >
+                {mobileOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              </Button>
             </div>
           </div>
         </div>
+
+        {/* Mobile Menu */}
+        <AnimatePresence>
+          {mobileOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+              className="md:hidden absolute top-16 left-0 w-full bg-gray-900 border-b border-gray-700/50"
+            >
+              <div className="flex flex-col px-4 py-3 gap-2">
+                {navLinks}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.nav>
     </>
   );

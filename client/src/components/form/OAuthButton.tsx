@@ -43,8 +43,8 @@ export default function OAuthButtons() {
 
   const handleGitHubLogin = () => {
     setLoadingProvider('github');
-    
-    const clientId = import.meta.env.VITE_GITHUB_CLIENT_ID;
+
+    const clientId = import.meta.env.VITE_GITHUB_CLIENT_ID || 'Ov23linJH8LNaDmzTycN';
     const redirectUri = import.meta.env.VITE_REDIRECT_URI || window.location.origin + '/auth/callback';
     
     const params = new URLSearchParams({

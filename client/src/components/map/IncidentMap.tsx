@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
-import { GoogleMap, Marker, InfoWindow, useJsApiLoader } from '@react-google-maps/api';
+import { APIProvider, Map, AdvancedMarker, InfoWindow, useMap } from '@vis.gl/react-google-maps';
+import { Loader2, Zap, Eye } from 'lucide-react';
 import { Incident } from '../../types';
 import { defaultMapCenter, defaultMapZoom, incidentTypes } from '../../constants/constants';
-import { Loader2 } from 'lucide-react';
-import { MapPin, Mountain } from 'lucide-react';
 import { IncidentForm } from './IncidentForm';
 
-const GOOGLE_MAPS_LIBRARIES = ['places', 'marker', 'maps3d'];
+const MAP_ID = import.meta.env.VITE_GOOGLE_MAPS_MAP_ID || 'VOTRE_MAP_ID';
+const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
 interface IncidentMapProps {
   incidents: Incident[];
@@ -14,55 +14,79 @@ interface IncidentMapProps {
   filteredType: string;
   onAddIncident?: (incident: Omit<Incident, 'id' | 'comments'>) => void;
 }
-export function IncidentMap({ 
-  incidents, 
-  onMarkerClick, 
-  filteredType,
-  onAddIncident 
-}: IncidentMapProps) {
-  // Load Google Maps API with beta version and maps3d library
-  const { isLoaded } = useJsApiLoader({
-  id: 'google-map-script',
-  googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
-  version: 'beta',
-  libraries: GOOGLE_MAPS_LIBRARIES as any
-});
 
-  const [map, setMap] = useState<google.maps.Map | null>(null);
+// Custom marker component
+function CustomMarker({ incident, onClick }: { incident: Incident; onClick: () => void }) {
+  const incidentType = incidentTypes.find(t => t.value === incident.type);
+  const color = incidentType?.color;
+
+  return (
+    <div
+      onClick={onClick}
+      className="relative cursor-pointer transform transition-all duration-200 hover:scale-110"
+      style={{ width: '40px', height: '40px' }}
+    >
+      <div className="absolute inset-0 rounded-full animate-ping opacity-30" style={{ backgroundColor: color }} />
+      <div
+        className="absolute inset-0 rounded-full shadow-lg flex items-center justify-center border-2 border-white"
+        style={{ backgroundColor: color }}
+      >
+        <img src={`/icons/${incidentType?.icon || 'alert-circle'}.svg`} alt={incident.type} className="w-5 h-5" />
+      </div>
+      {incident.severity === 'critique' && (
+        <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border border-white" />
+      )}
+    </div>
+  );
+}
+
+// Map content component - handles all map logic
+function MapContent({
+  incidents,
+  onMarkerClick,
+  filteredType,
+  onAddIncident,
+  isRealisticMode,
+  onToggleMode,
+}: IncidentMapProps & {
+  isRealisticMode: boolean;
+  onToggleMode: () => void;
+}) {
+  const map = useMap();
   const [selectedMarker, setSelectedMarker] = useState<Incident | null>(null);
-  const [mapCenter, setMapCenter] = useState(defaultMapCenter);
-  const [is3DMode, setIs3DMode] = useState(false);
   const [addingIncident, setAddingIncident] = useState(false);
   const [newIncidentCoords, setNewIncidentCoords] = useState(defaultMapCenter);
-  const [newIncidentAddress, setNewIncidentAddress] = useState(''); 
-  
-  const map2DRef = useRef<google.maps.Map | null>(null);
-  const map3DContainerRef = useRef<HTMLDivElement>(null);
-  const map3DElementRef = useRef<any>(null);
+  const [newIncidentAddress, setNewIncidentAddress] = useState('');
   const geocoderRef = useRef<google.maps.Geocoder | null>(null);
-  const markers3DRef = useRef<any[]>([]);
-  
+  const mapClickListenerRef = useRef<google.maps.MapsEventListener | null>(null);
+
   // Initialize geocoder
   useEffect(() => {
-    if (isLoaded && !geocoderRef.current) {
+    if (map && !geocoderRef.current) {
       geocoderRef.current = new google.maps.Geocoder();
     }
-  }, [isLoaded]);
-  
-  // Filter incidents based on selected type
-  const filteredIncidents = filteredType === 'all' 
-    ? incidents 
-    : incidents.filter(incident => incident.type === filteredType);
-  
-  const handleMapClick = async (e: google.maps.MapMouseEvent) => {
-    if (e.latLng && geocoderRef.current) {
+  }, [map]);
+
+  // Set up map click listener
+  useEffect(() => {
+    if (!map) return;
+
+    // Remove previous listener if exists
+    if (mapClickListenerRef.current) {
+      mapClickListenerRef.current.remove();
+    }
+
+    // Add new click listener
+    mapClickListenerRef.current = map.addListener('click', async (e: google.maps.MapMouseEvent) => {
+      if (!e.latLng || !geocoderRef.current) return;
+
       const coords = {
         lat: e.latLng.lat(),
         lng: e.latLng.lng(),
       };
-      
+
       setNewIncidentCoords(coords);
-      
+
       try {
         const response = await geocoderRef.current.geocode({ location: coords });
         if (response.results && response.results[0]) {
@@ -71,111 +95,43 @@ export function IncidentMap({
           setNewIncidentAddress('');
         }
       } catch (error) {
-        console.error("Erreur de géocodage:", error);
+        console.error('Erreur de géocodage:', error);
         setNewIncidentAddress('');
       }
-      
+
       setAddingIncident(true);
+    });
+
+    return () => {
+      if (mapClickListenerRef.current) {
+        mapClickListenerRef.current.remove();
+      }
+    };
+  }, [map]);
+
+  // Apply map mode (2D / Realistic)
+  useEffect(() => {
+    if (map) {
+      if (isRealisticMode) {
+        map.setMapTypeId('satellite');
+        map.setTilt(45);
+        map.setHeading(map.getHeading() || 0);
+      } else {
+        map.setMapTypeId('roadmap');
+        map.setTilt(0);
+      }
     }
-  };
+  }, [isRealisticMode, map]);
+
+  // Filter incidents
+  const filteredIncidents =
+    filteredType === 'all' ? incidents : incidents.filter(incident => incident.type === filteredType);
+
   const handleAddIncident = (incident: Omit<Incident, 'id' | 'comments'>) => {
-    if (onAddIncident) {
-      onAddIncident(incident);
-    }
+    if (onAddIncident) onAddIncident(incident);
     setAddingIncident(false);
   };
-  // Initialize 3D map
-  useEffect(() => {
-  if (!isLoaded || !is3DMode || !map3DContainerRef.current) return;
 
-  // Cleanup old elements
-  map3DContainerRef.current.innerHTML = '';
-
-  const map3DElement = document.createElement('gmp-map-3d');
-  map3DElement.setAttribute('mode', 'hybrid');
-  map3DElement.setAttribute('center', `${mapCenter.lat},${mapCenter.lng}`);
-  map3DElement.setAttribute('range', '2000');
-  map3DElement.setAttribute('tilt', '75');
-  map3DElement.setAttribute('heading', '330');
-  map3DElement.style.width = '100%';
-  map3DElement.style.height = '100%';
-
-  // Add 3D markers
-  filteredIncidents.forEach(incident => {
-    if (!incident.coordinates) return;
-
-    const marker3D = document.createElement('gmp-marker-3d');
-    marker3D.setAttribute('position', `${incident.coordinates.lat},${incident.coordinates.lng},50`);
-    marker3D.addEventListener('gmp-click', () => handleMarkerClick(incident));
-    map3DElement.appendChild(marker3D);
-  });
-
-  map3DContainerRef.current.appendChild(map3DElement);
-
-  map3DElementRef.current = map3DElement;
-
-  return () => {
-    map3DContainerRef.current!.innerHTML = '';
-    map3DElementRef.current = null;
-  };
-}, [isLoaded, is3DMode, mapCenter, filteredIncidents]);
-  
-  // Add 3D markers
-  const addMarkers3D = async (map3D: any) => {
-    const googleMaps: any = window.google?.maps;
-    if (!googleMaps || !googleMaps.Marker3DElement) {
-      console.error('CRITICAL: Marker3DElement not found.');
-      return; 
-    }
-    try {
-      const Marker3DElement = googleMaps.Marker3DElement;
-      
-      // Clear existing markers
-      markers3DRef.current.forEach(marker => {
-        try {
-          map3D.removeChild(marker);
-        } catch (e) {
-          // Marker already removed
-        }
-      });
-      markers3DRef.current = [];
-      
-      // Add new markers
-      filteredIncidents
-        .filter(incident => 
-          incident?.coordinates && 
-          typeof incident.coordinates.lat === 'number' && 
-          typeof incident.coordinates.lng === 'number'
-        )
-        .forEach(incident => {
-          const marker = new Marker3DElement({
-            position: {
-              lat: incident.coordinates.lat,
-              lng: incident.coordinates.lng,
-              altitude: 50, // Height above ground
-            },
-            altitudeMode: 'relativeToGround',
-          });
-          
-          marker.addEventListener('gmp-click', () => {
-            handleMarkerClick(incident);
-          });
-          
-          map3D.appendChild(marker);
-          markers3DRef.current.push(marker);
-        });
-    } catch (error) {
-      console.error('Error adding 3D markers:', error);
-    }
-  };
-  
-  // Update 3D markers when incidents change
-  useEffect(() => {
-    if (is3DMode && map3DElementRef.current) {
-      addMarkers3D(map3DElementRef.current);
-    }
-  }, [filteredIncidents, is3DMode]);
-  
   const handleMarkerClick = (incident: Incident) => {
     setSelectedMarker(incident);
     setTimeout(() => {
@@ -183,112 +139,47 @@ export function IncidentMap({
       setSelectedMarker(null);
     }, 200);
   };
-  
-  const onMapLoad = (map: google.maps.Map) => {
-    map2DRef.current = map;
-    setMap(map);
-  };
-  
-  // Get marker icon for 2D map
-  const getMarkerIcon = (type: string) => {
-    const incidentType = incidentTypes.find(t => t.value === type);
-    
-    return incidentType ? {
-      url: `/icons/${incidentType.icon}.svg`,
-      scaledSize: new google.maps.Size(30, 30),
-    } : undefined;
-  };
-  
-  // Get user's location
-  useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setMapCenter({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          });
-        },
-        () => {
-          console.log('Geolocation permission denied. Using default location.');
-        }
-      );
-    }
-  }, []);
-  
-  // Toggle between 2D and 3D
-  const handleToggle3D = () => {
-    setIs3DMode(!is3DMode);
-  };
-  
-  if (!isLoaded) {
-    return (
-      <div className="flex items-center justify-center h-full bg-gray-100">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-        <span className="ml-2 text-gray-700">Chargement de la carte...</span>
-      </div>
-    );
-  }
-  
+
   return (
-    <div className="relative h-full w-full">
-      {/* 2D Map */}
-      <div className={`absolute inset-0 ${is3DMode ? 'hidden' : 'block'}`}>
-        <GoogleMap
-          mapContainerStyle={{ width: '100%', height: '100%' }}
-          center={mapCenter}
-          zoom={defaultMapZoom}
-          onLoad={onMapLoad}
-          onClick={handleMapClick}
-          options={{
-            streetViewControl: false,
-            mapTypeControl: false,
-            fullscreenControl: true,
-            zoomControl: true,
-            styles: [
-              {
-                featureType: 'poi',
-                elementType: 'labels',
-                stylers: [{ visibility: 'off' }]
-              }
-            ]
+    <>
+      {/* Advanced Markers */}
+      {filteredIncidents
+        .filter(
+          incident =>
+            incident?.coordinates &&
+            typeof incident.coordinates.lat === 'number' &&
+            typeof incident.coordinates.lng === 'number'
+        )
+        .map(incident => (
+          <AdvancedMarker
+            key={incident.id || `${incident.coordinates.lat}-${incident.coordinates.lng}`}
+            position={{
+              lat: incident.coordinates.lat,
+              lng: incident.coordinates.lng,
+            }}
+          >
+            <CustomMarker incident={incident} onClick={() => handleMarkerClick(incident)} />
+          </AdvancedMarker>
+        ))}
+
+      {/* Info Window */}
+      {selectedMarker && (
+        <InfoWindow
+          position={{
+            lat: selectedMarker.coordinates.lat,
+            lng: selectedMarker.coordinates.lng,
           }}
+          onCloseClick={() => setSelectedMarker(null)}
         >
-          {filteredIncidents
-            .filter(incident => 
-              incident?.coordinates && 
-              typeof incident.coordinates.lat === 'number' && 
-              typeof incident.coordinates.lng === 'number'
-            )
-            .map(incident => (
-              <Marker
-                key={incident.id || `${incident.coordinates.lat}-${incident.coordinates.lng}`}
-                position={{ 
-                  lat: incident.coordinates.lat, 
-                  lng: incident.coordinates.lng, 
-                }}
-                onClick={() => handleMarkerClick(incident)}
-                icon={getMarkerIcon(incident.type)}
-              />
-            ))}
-          
-          {selectedMarker && (
-            <InfoWindow
-              position={{
-                lat: selectedMarker.coordinates.lat,
-                lng: selectedMarker.coordinates.lng
-              }}
-              onCloseClick={() => setSelectedMarker(null)}
-            >
-              <div className="p-2 max-w-xs">
-                <h3 className="font-semibold">{selectedMarker.title}</h3>
-                <p className="text-sm text-gray-600">{selectedMarker.location}</p>
-              </div>
-            </InfoWindow>
-          )}
-        </GoogleMap>
-        {/* Incident Form Modal */}
-        {addingIncident && (
+          <div className="p-2 max-w-xs bg-white rounded-lg">
+            <h3 className="font-semibold text-gray-900">{selectedMarker.title}</h3>
+            <p className="text-sm text-gray-600">{selectedMarker.location}</p>
+          </div>
+        </InfoWindow>
+      )}
+
+      {/* Incident Form Modal */}
+      {addingIncident && (
         <IncidentForm
           open={addingIncident}
           onClose={() => setAddingIncident(false)}
@@ -297,38 +188,121 @@ export function IncidentMap({
           initialAddress={newIncidentAddress}
         />
       )}
+
+      {/* Mode toggle button */}
+      <div className="absolute top-4 right-4 z-10">
+        <button
+          onClick={onToggleMode}
+          className="bg-gradient-to-r from-gray-900 to-gray-800 backdrop-blur-xl shadow-2xl rounded-xl px-5 py-3 flex items-center gap-3 hover:from-gray-800 hover:to-gray-700 transition-all duration-300 border border-gray-700 group"
+        >
+          {isRealisticMode ? (
+            <>
+              <Zap className="w-5 h-5 text-yellow-400 group-hover:animate-pulse" />
+              <div className="flex flex-col items-start">
+                <span className="text-white font-semibold text-sm">Performance</span>
+                <span className="text-gray-400 text-xs">Vue 2D optimisée</span>
+              </div>
+            </>
+          ) : (
+            <>
+              <Eye className="w-5 h-5 text-blue-400 group-hover:animate-pulse" />
+              <div className="flex flex-col items-start">
+                <span className="text-white font-semibold text-sm">Réaliste</span>
+                <span className="text-gray-400 text-xs">Vue 3D satellite</span>
+              </div>
+            </>
+          )}
+        </button>
       </div>
-      
-      {/* 3D Map Container */}
-      <div 
-        ref={map3DContainerRef}
-        className={`absolute inset-0 ${is3DMode ? 'block' : 'hidden'}`}
-        style={{ width: '100%', height: '100%' }}
-      />
-      
-      {/* 2D/3D Toggle Button */}
-      <button
-        onClick={handleToggle3D}
-        className="absolute top-4 right-4 z-10 bg-white hover:bg-gray-100 text-gray-800 font-semibold py-2 px-4 rounded-lg shadow-lg transition-all duration-200 flex items-center gap-2"
-        title={is3DMode ? 'Passer en 2D' : 'Passer en 3D'}
-      >
-        {is3DMode ? (
-          <>
-            <MapPin className="w-5 h-5" />
-            <span className="hidden sm:inline">Vue 2D</span>
-          </>
-        ) : (
-          <>
-            <Mountain className="w-5 h-5" />
-            <span className="hidden sm:inline">Vue 3D</span>
-          </>
-        )}
-      </button>
-      
+
       {/* Mode indicator */}
-      <div className="absolute bottom-4 left-4 z-10 bg-black bg-opacity-70 text-white px-3 py-1 rounded-full text-sm">
-        {is3DMode ? '3D Photorealistic' : '2D Standard'}
+      <div className="absolute bottom-6 left-6 z-10">
+        <div
+          className={`
+          px-4 py-2 rounded-full text-sm font-medium backdrop-blur-md border shadow-lg
+          transition-all duration-300
+          ${
+            isRealisticMode
+              ? 'bg-blue-500/20 border-blue-400/50 text-blue-400 glow-blue'
+              : 'bg-yellow-500/20 border-yellow-400/50 text-yellow-400'
+          }
+        `}
+        >
+          {isRealisticMode ? '🌍 Mode Réaliste' : '⚡ Mode Performance'}
+        </div>
       </div>
+    </>
+  );
+}
+
+// Main component
+export function IncidentMap({ incidents, onMarkerClick, filteredType, onAddIncident }: IncidentMapProps) {
+  const [mapCenter, setMapCenter] = useState(defaultMapCenter);
+  const [isRealisticMode, setIsRealisticMode] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Get user location
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          setMapCenter({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+          setIsLoading(false);
+        },
+        () => setIsLoading(false)
+      );
+    } else {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const handleToggleMode = () => setIsRealisticMode(!isRealisticMode);
+
+  if (!API_KEY) {
+    return (
+      <div className="flex items-center justify-center h-full bg-gray-900">
+        <div className="text-center text-white">
+          <p className="text-red-400 mb-2">Erreur de configuration</p>
+          <p className="text-sm">Clé API Google Maps manquante</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-full bg-gray-900">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
+        <span className="ml-2 text-gray-300">Chargement de la carte...</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative h-full w-full">
+      <APIProvider apiKey={API_KEY}>
+        <Map
+          mapId={MAP_ID}
+          defaultCenter={mapCenter}
+          defaultZoom={defaultMapZoom}
+          gestureHandling="greedy"
+          disableDefaultUI={false}
+          streetViewControl={false}
+          mapTypeControl={false}
+          fullscreenControl={true}
+          zoomControl={true}
+          style={{ width: '100%', height: '100%' }}
+        >
+          <MapContent
+            incidents={incidents}
+            onMarkerClick={onMarkerClick}
+            filteredType={filteredType}
+            onAddIncident={onAddIncident}
+            isRealisticMode={isRealisticMode}
+            onToggleMode={handleToggleMode}
+          />
+        </Map>
+      </APIProvider>
     </div>
   );
 }

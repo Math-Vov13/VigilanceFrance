@@ -2,27 +2,40 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Navbar } from '../components/layout/Navbar';
 import { IncidentMap } from '../components/map/IncidentMap';
 import { IncidentSidebar } from '../components/map/IncidentSidebar';
-import { IncidentFilters } from '../components/map/IncidentFilters';
+import { MapSidebarMenu } from '../components/map/MapSidebarMenu';
 import { Incident, IncidentType } from '../types';
 import { incidentTypes } from '../constants/constants';
-import { Badge } from '../components/ui/badge';
-import { Filter, X, Loader2 } from 'lucide-react';
-import { Sheet, SheetContent, SheetTrigger } from '../components/ui/sheet';
+import { Loader2 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { mapsApi } from '../services/api';
 import { useToast } from '@/components/ui/use-toast';
-
-
 
 export default function MapPage() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
   const [incidentTypeFilter, setIncidentTypeFilter] = useState<string>('all');
-  const [mobileFiltersOpen, setMobileFiltersOpen] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | undefined>();
   const { toast } = useToast();
+  
+  // Get user location
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+        },
+        (error) => {
+          console.error('Error getting location:', error);
+        }
+      );
+    }
+  }, []);
   
   const fetchIncidents = useCallback(async (typeFilter: IncidentType | undefined = undefined) => {
     try {
@@ -42,12 +55,6 @@ export default function MapPage() {
   useEffect(() => {
     fetchIncidents();
   }, [fetchIncidents]);
-  
-  const getActiveFilterLabel = useMemo(() => (filterType: string) => {
-    if (filterType === 'all') return 'Tous les incidents';
-    const incidentType = incidentTypes.find(type => type.value === filterType);
-    return incidentType?.label ?? 'Tous les incidents';
-  }, []);
   
   const handleMarkerClick = useCallback((incident: Incident) => {
     setSelectedIncident(incident);
@@ -210,10 +217,37 @@ export default function MapPage() {
     })), 
   [safeIncidents]);
   
+  // Calculate nearby incidents (within 5km)
+  const nearbyIncidents = useMemo(() => {
+    if (!userLocation) return 0;
+    
+    return safeIncidents.filter(incident => {
+      if (!incident.coordinates) return false;
+      
+      const distance = Math.sqrt(
+        Math.pow(incident.coordinates.lat - userLocation.lat, 2) +
+        Math.pow(incident.coordinates.lng - userLocation.lng, 2)
+      );
+      
+      // Rough approximation: 1 degree ≈ 111km
+      return distance * 111 <= 5;
+    }).length;
+  }, [safeIncidents, userLocation]);
+  
+  const globalStats = useMemo(() => ({
+    total: safeIncidents.length,
+    byType: countByType.reduce((acc, item) => {
+      if (item.value !== 'all') {
+        acc[item.value] = item.count;
+      }
+      return acc;
+    }, {} as Record<string, number>)
+  }), [safeIncidents, countByType]);
+  
   if (isLoading && (!incidents || incidents.length === 0)) {
     return (
       <div className="h-screen flex flex-col bg-background">
-        <Navbar showSearch={false} />
+        <Navbar/>
         <div className="flex-grow flex items-center justify-center">
           <div className="text-center">
             <Loader2 className="h-10 w-10 animate-spin mx-auto text-primary" />
@@ -227,7 +261,7 @@ export default function MapPage() {
   if (error && (!incidents || incidents.length === 0)) {
     return (
       <div className="h-screen flex flex-col bg-background">
-        <Navbar showSearch={false} />
+        <Navbar/>
         <div className="flex-grow flex items-center justify-center">
           <div className="text-center max-w-md px-4">
             <div className="bg-destructive/10 text-destructive p-4 rounded-lg mb-4 border border-destructive/30">
@@ -244,54 +278,19 @@ export default function MapPage() {
   
   return (
     <div className="h-screen flex flex-col bg-background">
-      <Navbar showSearch />
+      <Navbar/>
       
       <div className="flex-grow flex relative pt-16">
-        {/* Desktop Filters Sidebar */}
-        <div className="hidden md:block w-80 bg-card border-r border-border overflow-auto">
-          <div className="p-4 sticky top-0">
-            <IncidentFilters 
-              selectedType={incidentTypeFilter} 
-              onChange={handleFilterChange}
-              counts={countByType} 
-            />
-          </div>
-        </div>
-        
-        {/* Mobile filters */}
-        <div className="md:hidden fixed top-16 left-0 right-0 z-30 bg-card border-b border-border px-4 py-2 flex items-center justify-between shadow-sm">
-          <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
-            <SheetTrigger asChild>
-              <Button variant="outline" size="sm" className="flex items-center gap-2">
-                <Filter className="h-4 w-4" />
-                Filtres
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-80 pt-12 bg-card">
-              <div className="px-1">
-                <IncidentFilters 
-                  selectedType={incidentTypeFilter} 
-                  onChange={(value) => {
-                    handleFilterChange(value);
-                    setMobileFiltersOpen(false);
-                  }}
-                  counts={countByType}
-                />
-              </div>
-            </SheetContent>
-          </Sheet>
-          
-          {incidentTypeFilter !== 'all' && (
-            <Badge variant="secondary" className="ml-2">
-              {getActiveFilterLabel(incidentTypeFilter)}
-              <button
-                className="ml-1"
-                onClick={() => handleFilterChange('all')}
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </Badge>
-          )}
+        {/* Permanent Sidebar with Icons */}
+        <div className="relative z-30">
+          <MapSidebarMenu
+            selectedType={incidentTypeFilter}
+            onFilterChange={handleFilterChange}
+            counts={countByType}
+            userLocation={userLocation}
+            nearbyIncidents={nearbyIncidents}
+            globalStats={globalStats}
+          />
         </div>
         
         {/* Main map area */}

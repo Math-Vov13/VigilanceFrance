@@ -1,7 +1,10 @@
 import { createClient } from 'redis';
 
 const redis_url = `redis://${process.env.REDIS_HOST || 'localhost'}:${process.env.REDIS_PORT || '6379'}`
-export const redisClient = createClient({ url: redis_url, password: process.env.REDIS_PSWD || "mypassword" });
+export const redisClient = createClient({
+    url: redis_url,
+    ...(process.env.REDIS_PSWD ? { password: process.env.REDIS_PSWD } : {})
+});
 
 redisClient.on('connect', () => {
     console.log(`[${process.env.TAG || 'server'}]: Connected to Redis on (${redis_url})`);

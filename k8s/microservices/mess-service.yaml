@@ -1,0 +1,135 @@
+---
+# Messages Service Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mess-service
+  namespace: vigilance-france
+  labels:
+    app: mess-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: mess-service
+  template:
+    metadata:
+      labels:
+        app: mess-service
+    spec:
+      containers:
+      - name: mess-service
+        image: vigilance/mess-service:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 80
+          name: http
+        - containerPort: 80
+          name: websocket
+          protocol: TCP
+        env:
+        - name: PORT
+          value: "80"
+        - name: NODE_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: vigilance-config
+              key: NODE_ENV
+        - name: MONGO_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: vigilance-config
+              key: MONGO_HOST
+        - name: MONGO_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: vigilance-config
+              key: MONGO_PORT
+        - name: MONGO_DB
+          valueFrom:
+            configMapKeyRef:
+              name: vigilance-config
+              key: MONGO_DB
+        - name: MONGO_USER
+          valueFrom:
+            configMapKeyRef:
+              name: vigilance-config
+              key: MONGO_USER
+        - name: MONGO_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: vigilance-secrets
+              key: MONGO_PASSWORD
+        - name: REDIS_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: vigilance-config
+              key: REDIS_HOST
+        - name: REDIS_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: vigilance-config
+              key: REDIS_PORT
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: vigilance-secrets
+              key: REDIS_PASSWORD
+        - name: REDIS_PSWD
+          valueFrom:
+            secretKeyRef:
+              name: vigilance-secrets
+              key: REDIS_PSWD
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: vigilance-secrets
+              key: JWT_SECRET
+        - name: REDIS_SESSION_SECRET
+          valueFrom:
+            configMapKeyRef:
+              name: vigilance-config
+              key: REDIS_SESSION_SECRET
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+
+---
+# Messages Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: mess-service
+  namespace: vigilance-france
+  labels:
+    app: mess-service
+  annotations:
+    service.beta.kubernetes.io/do-loadbalancer-enable-proxy-protocol: "true"
+spec:
+  type: ClusterIP
+  sessionAffinity: ClientIP  # Important pour WebSocket
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: http
+  selector:
+    app: mess-service

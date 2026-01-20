@@ -1,0 +1,129 @@
+---
+# Maps Service Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: maps-service
+  namespace: vigilance-france
+  labels:
+    app: maps-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: maps-service
+  template:
+    metadata:
+      labels:
+        app: maps-service
+    spec:
+      containers:
+      - name: maps-service
+        image: vigilance/maps-service:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 80
+          name: http
+        env:
+        - name: PORT
+          value: "80"
+        - name: NODE_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: vigilance-config
+              key: NODE_ENV
+        - name: MONGO_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: vigilance-config
+              key: MONGO_HOST
+        - name: MONGO_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: vigilance-config
+              key: MONGO_PORT
+        - name: MONGO_DB
+          valueFrom:
+            configMapKeyRef:
+              name: vigilance-config
+              key: MONGO_DB
+        - name: MONGO_USER
+          valueFrom:
+            configMapKeyRef:
+              name: vigilance-config
+              key: MONGO_USER
+        - name: MONGO_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: vigilance-secrets
+              key: MONGO_PASSWORD
+        - name: REDIS_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: vigilance-config
+              key: REDIS_HOST
+        - name: REDIS_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: vigilance-config
+              key: REDIS_PORT
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: vigilance-secrets
+              key: REDIS_PASSWORD
+        - name: REDIS_PSWD
+          valueFrom:
+            secretKeyRef:
+              name: vigilance-secrets
+              key: REDIS_PSWD
+        - name: REDIS_SESSION_SECRET
+          valueFrom:
+            configMapKeyRef:
+              name: vigilance-config
+              key: REDIS_SESSION_SECRET
+        - name: GOOGLE_MAPS_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: vigilance-secrets
+              key: GOOGLE_MAPS_API_KEY
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+
+---
+# Maps Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: maps-service
+  namespace: vigilance-france
+  labels:
+    app: maps-service
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: http
+  selector:
+    app: maps-service

@@ -1,11 +1,13 @@
 import { z } from "zod";
-import { UserRegister } from "../schema/users_sc";
+import { UserOAuthRegister, UserRegister } from "../schema/users_sc";
 import { hashPassword, verifyPassword } from "../security/hash";
 import { IUser, UsersModel } from "../schema/mongo_users_sc";
 
 // const fake_db: z.infer<typeof UserDB>[] = []
 
-
+export type CreateUserInput = 
+  | z.infer<typeof UserRegister> 
+  | (z.infer<typeof UserOAuthRegister>);
 
 export async function getUserById(id: string): Promise<IUser | null> {
     // const user = fake_db.find((user) => user.id === id);
@@ -16,6 +18,22 @@ export async function getUserById(id: string): Promise<IUser | null> {
 
     try {
         const user = await UsersModel.findById(id).exec();
+        console.log("User:", user);
+
+        return user;
+
+    } catch (err) {
+        console.log("NOT FOUND:", err);
+        return null;
+    }
+}
+
+export async function getUserByEmail(email: z.infer<typeof UserRegister>["email"]) : Promise<IUser | null> {
+    // const user = fake_db.find((user) => user.email === email);
+    // return user || null;
+
+    try {
+        const user = await UsersModel.findOne({ email: email }).exec();
         console.log("User:", user);
 
         return user;
@@ -60,33 +78,36 @@ export async function getUser(email: z.infer<typeof UserRegister>["email"], pass
 //     return user || null;
 // }
 
-export async function createUser(user: z.infer<typeof UserRegister>): Promise<IUser | null> {
-    // // Check if user already exists
-    // const existingUser = await getUser_byemail(user.email);
-    // if (existingUser) {
-    //     return null;
-    // }
-    // const data = {
-    //     "id": crypto.randomUUID(),
-    //     "username": user.firstName + user.lastName,
-    //     "password": await hashPassword(user.password),
-    //     "email": user.email,
-    //     "createdAt": new Date(),
-    // }
-    // fake_db.push(data);
-
+export async function createUser(user: CreateUserInput): Promise<IUser | null> {
     try {
-        const new_user = await UsersModel.create({
-            "lastName": user.lastName,
-            "firstName": user.firstName,
-            "email": user.email,
-            "password": await hashPassword(user.password)
-        });
-        console.log("User:", new_user);
-        return new_user
+        // Determine if this is an OAuth user
+        const isOAuth = 'authProvider' in user && (user as any).authProvider !== 'local';
+        
+        // For OAuth users, password can be empty or undefined
+        // For local users, password must be hashed
+        const hashedPassword = user.password && user.password.length > 0
+            ? await hashPassword(user.password)
+            : undefined;
 
-    } catch (err) {
-        console.log("CONFLICT:", err);
+        const new_user = await UsersModel.create({
+            lastName: user.lastName,
+            firstName: user.firstName,
+            email: user.email,
+            password: hashedPassword,
+            profileImage: user.profileImage || undefined,
+            authProvider: 'authProvider' in user ? user.authProvider : 'local',
+        });
+        
+        console.log("User created:", new_user.id, new_user.authProvider);
+        return new_user;
+
+    } catch (err: any) {
+        // Handle duplicate email error
+        if (err.code === 11000) {
+            console.log("User already exists with email:", user.email);
+        } else {
+            console.error("Error creating user:", err);
+        }
         return null;
     }
 }

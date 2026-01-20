@@ -4,7 +4,11 @@ import { email_queue_schema } from "../schemas/queues";
 
 
 export const emailQueue = new Bull<z.infer<typeof email_queue_schema>>('email_queue', {
-    redis: { host: process.env.REDIS_HOST || 'localhost', port: Number(process.env.REDIS_PORT) || 6379, password: process.env.REDIS_PSWD || "mypassword" },
+    redis: {
+        host: process.env.REDIS_HOST || 'localhost',
+        port: Number(process.env.REDIS_PORT) || 6379,
+        ...(process.env.REDIS_PSWD ? { password: process.env.REDIS_PSWD } : {})
+    },
     limiter: {
         max: 100,
         duration: 10 *1000

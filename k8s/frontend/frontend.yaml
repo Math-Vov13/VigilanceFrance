@@ -1,0 +1,130 @@
+---
+# Frontend Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: vigilance-france
+  labels:
+    app: frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+      - name: frontend
+        image: vigilance/frontend:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 3000
+          name: http
+        env:
+        - name: VITE_API_GATEWAY_URL
+          value: "http://api-gateway-service:3000"
+        - name: VITE_GOOGLE_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: vigilance-secrets
+              key: GOOGLE_CLIENT_ID
+        - name: VITE_GITHUB_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: vigilance-secrets
+              key: GITHUB_CLIENT_ID
+        - name: VITE_REDIRECT_URI
+          value: "http://localhost:3000/auth/callback"
+        - name: VITE_GOOGLE_MAPS_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: vigilance-secrets
+              key: GOOGLE_MAPS_API_KEY
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+
+---
+# Frontend Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
+  namespace: vigilance-france
+  labels:
+    app: frontend
+spec:
+  type: NodePort
+  ports:
+  - port: 3000
+    targetPort: 3000
+    nodePort: 30000
+    protocol: TCP
+    name: http
+  selector:
+    app: frontend
+
+---
+# Ingress pour exposer l'application
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: vigilance-ingress
+  namespace: vigilance-france
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/websocket-services: "mess-service"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: vigilance-france.local
+    http:
+      paths:
+      # Frontend
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: frontend-service
+            port:
+              number: 3000
+      # API Gateway
+      - path: /auth
+        pathType: Prefix
+        backend:
+          service:
+            name: api-gateway-service
+            port:
+              number: 3000
+      - path: /v1
+        pathType: Prefix
+        backend:
+          service:
+            name: api-gateway-service
+            port:
+              number: 3000

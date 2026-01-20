@@ -1,5 +1,5 @@
 # Build Image
-FROM node:current-slim
+FROM node:22
 
 # Args
 ARG CONT_IMG_VER=1.0.0

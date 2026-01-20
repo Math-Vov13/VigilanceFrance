@@ -2,22 +2,22 @@ import { IncidentTypeInfo, SeverityLevel, IncidentStatusInfo } from '../types';
 
 
 export const incidentTypes: IncidentTypeInfo[] = [
-    { value: 'accident', label: 'Accident de la route', color: '#FF5722', icon: 'car-crash' },
-    { value: 'inondation', label: 'Inondation', color: '#2196F3', icon: 'droplet' },
-    { value: 'incendie', label: 'Incendie', color: '#F44336', icon: 'flame' },
-    { value: 'vol', label: 'Vol/Cambriolage', color: '#9C27B0', icon: 'shield-off' },
-    { value: 'agression', label: 'Agression', color: '#E91E63', icon: 'alert-triangle' },
-    { value: 'manifestation', label: 'Manifestation', color: '#FF9800', icon: 'users' },
-    { value: 'panne', label: 'Panne/Coupure', color: '#607D8B', icon: 'zap-off' },
-    { value: 'pollution', label: 'Pollution', color: '#795548', icon: 'cloud-off' },
-    { value: 'autre', label: 'Autre incident', color: '#9E9E9E', icon: 'alert-circle' }
+    { value: 'accident', label: 'Road Accident', color: '#FF5722', icon:'auto-crash' },
+    { value: 'inondation', label: 'Flood', color: '#2196F3', icon: 'flood' },
+    { value: 'incendie', label: 'Fire', color: '#F44336', icon: 'flame' },
+    { value: 'vol', label: 'Theft/Burglary', color: '#9C27B0', icon: 'robbery' },
+    { value: 'agression', label: 'Assault', color: '#E91E63', icon: 'assault' },
+    { value: 'manifestation', label: 'Demonstration', color: '#FF9800', icon: 'movement' },
+    { value: 'panne', label: 'Breakdown', color: '#607D8B', icon: 'breakdown' },
+    { value: 'pollution', label: 'Air Pollution', color: '#795548', icon: 'air-pollution' },
+    { value: 'autre', label: 'Other Incident', color: '#9E9E9E', icon: 'others' }
   ];
   
 export const severityLevels: SeverityLevel[] = [
-    { value: 'mineur', label: 'Mineur', color: '#8BC34A' },
-    { value: 'moyen', label: 'Moyen', color: '#FFC107' },
-    { value: 'majeur', label: 'Majeur', color: '#FF5722' },
-    { value: 'critique', label: 'Critique', color: '#F44336' }
+    { value: 'mineur', label: 'Minor', color: '#8BC34A' },
+    { value: 'moyen', label: 'Medium', color: '#FFC107' },
+    { value: 'majeur', label: 'Major', color: '#FF5722' },
+    { value: 'critique', label: 'Critical', color: '#F44336' }
 ];
   
 export const defaultMapCenter = { lat: 46.603354, lng: 1.888334 }; // Center of France

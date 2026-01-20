@@ -236,6 +236,16 @@ export const mapsApi = {
       throw error;
     }
   },
+
+  deleteIncident: async (id: string) => {
+    try {
+      const response = await apiClient.delete(`/maps/interactions/issues/${id}`);
+      return extractData<{ success: boolean; message: string }>(response);
+    } catch (error) {
+      console.error(`Error deleting incident ${id}:`, error);
+      throw error;
+    }
+  },
   
   // Commentaires
   addComment: async (id: string, text: string) => {

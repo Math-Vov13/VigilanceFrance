@@ -1,17 +1,12 @@
 import * as React from 'react';
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { Label } from '../ui/label';
-import {
-  AlertCircle,
-  Droplets,
-  AlertTriangle,
-  Flame,
-  MapPin,
-  Users,
-  CloudOff,
-  ZapOff,
-  ShieldOff
-} from 'lucide-react';
+import { AlertCircle, MapPin} from 'lucide-react';
+import { FaCarCrash, FaFireExtinguisher, FaQuestion } from "react-icons/fa";
+import { RiFloodFill } from "react-icons/ri";
+import { FaPeopleRobbery, FaPeopleGroup } from "react-icons/fa6";
+import { GiHighPunch, GiCellarBarrels } from "react-icons/gi";
+import { FiZapOff } from "react-icons/fi";
 import { incidentTypes } from '../../constants/constants';
 
 type IncidentFiltersProps = {
@@ -23,21 +18,21 @@ type IncidentFiltersProps = {
 export function IncidentFilters({ selectedType, onChange, counts }: IncidentFiltersProps) {
   const getIconComponent = (iconName: string) => {
     const iconMap: Record<string, React.ReactElement> = {
-      'car-crash': <AlertCircle className="h-4 w-4" />,
-      'droplet': <Droplets className="h-4 w-4" />,
-      'flame': <Flame className="h-4 w-4" />,
-      'shield-off': <ShieldOff className="h-4 w-4" />,
-      'alert-triangle': <AlertTriangle className="h-4 w-4" />,
-      'users': <Users className="h-4 w-4" />,
-      'zap-off': <ZapOff className="h-4 w-4" />,
-      'cloud-off': <CloudOff className="h-4 w-4" />,
-      'alert-circle': <AlertCircle className="h-4 w-4" />
+      'auto-crash': <FaCarCrash className="h-4 w-4" />,
+      'flood': <RiFloodFill className="h-4 w-4" />,
+      'flame': <FaFireExtinguisher className="h-4 w-4" />,
+      'robbery': <FaPeopleRobbery className="h-4 w-4" />,
+      'assault': <GiHighPunch className="h-4 w-4" />,
+      'movement': <FaPeopleGroup className="h-4 w-4" />,
+      'breakdown': <FiZapOff className="h-4 w-4" />,
+      'air-pollution': <GiCellarBarrels className="h-4 w-4" />,
+      'others': <FaQuestion className="h-4 w-4" />
     };
     return iconMap[iconName] || <AlertCircle className="h-4 w-4" />;
   };
 
   const allIncidentTypes = [
-    { value: 'all', label: 'Tous les incidents', icon: 'map-pin', color: '#6B7280' },
+    { value: 'all', label: 'All incidents', icon: 'map-pin', color: '#6B7280' },
     ...incidentTypes
   ];
 

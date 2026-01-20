@@ -9,6 +9,7 @@ import cookieParser from "cookie-parser";
 import { redisClient } from "./models/redis-connector";
 import { sessionMiddleware } from "./sessionStorage";
 import { getUserById } from "./models/users_db";
+import { z } from "zod";
 
 
 // export function extractUserFromSocket(socket: Socket) {
@@ -137,11 +138,18 @@ export function setupSocket(server: http.Server) {
 
       let newMessage = null;
       try {
-        console.log("Received message data:", data);
+        console.log("Received message data:", JSON.stringify(data, null, 2));
+        console.log("Data type:", typeof data);
+        console.log("Data keys:", Object.keys(data));
+
         newMessage = await createMessage.parseAsync(data);
+        console.log("✅ Message validated successfully:", newMessage);
       } catch(err) {
-        console.log("Error validating message schema:", err);
-        socket.emit("error", "Schema not valid!");
+        console.log("❌ Error validating message schema:", err);
+        if (err instanceof z.ZodError) {
+          console.log("Zod validation errors:", JSON.stringify(err.errors, null, 2));
+        }
+        socket.emit("error", `Schema not valid! ${err instanceof z.ZodError ? JSON.stringify(err.errors) : err}`);
         return;
       }
 

@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
-import { Facebook, Twitter, Instagram, Github, Shield } from 'lucide-react';
+import { Facebook, Twitter, Instagram, Github} from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 type FooterProps = {
   minimal?: boolean;
@@ -22,10 +23,7 @@ export function Footer({ minimal = false }: FooterProps) {
         <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
           <div className="col-span-1 md:col-span-4">
             <div className="flex items-center space-x-2 mb-6">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center shadow-lg">
-                <Shield className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-xl font-bold text-white">VigilanceFrance</span>
+              <span className={cn("text-xl font-bold text-white leading-none italic", "font-exo2")}>Sentinal</span>
             </div>
             <p className="text-gray-400 max-w-md mb-8">
               Une plateforme citoyenne pour améliorer la sécurité et l'information en France. Signaler, collaborer, protéger.
@@ -83,10 +81,10 @@ export function Footer({ minimal = false }: FooterProps) {
         </div>
         
         <div className="mt-12 pt-8 border-t border-gray-800 text-gray-500 text-sm flex flex-col md:flex-row justify-between items-center">
-          <p>© 2025 VigilanceFrance. Tous droits réservés.</p>
+          <p>© 2025 Sentinal. All rights reserved.</p>
           <div className="mt-4 md:mt-0 flex space-x-6">
             <Link to="/legal/terms" className="hover:text-white transition-colors">Conditions</Link>
-            <Link to="/legal/privacy" className="hover:text-white transition-colors">Confidentialité</Link>
+            <Link to="/legal/privacy" className="hover:text-white transition-colors">Confidentiality</Link>
             <Link to="/cookies" className="hover:text-white transition-colors">Cookies</Link>
           </div>
         </div>

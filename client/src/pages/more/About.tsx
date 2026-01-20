@@ -1,4 +1,4 @@
-import  { Navbar } from '../../components/layout/Navbar';
+import { Navbar } from '../../components/layout/Navbar';
 import { Footer } from '../../components/layout/Footer';
 import { Helmet } from 'react-helmet';
 
@@ -6,96 +6,100 @@ const About = () => {
   return (
     <>
       <Helmet>
-        <title>À propos | VigilanceFrance</title>
-        <meta name="description" content="Découvrez l'histoire et la mission de VigilanceFrance, une plateforme citoyenne dédiée à la sécurité publique." />
+        <title>About | Sentinelle</title>
+        <meta
+          name="description"
+          content="Discover the story and mission of Sentinelle, a collaborative platform dedicated to public safety."
+        />
       </Helmet>
+
       <Navbar />
-      <main className="bg-gray-50 min-h-screen">
+
+      <main className="bg-gray-900 dark min-h-screen text-gray-100 mt-16">
         <div className="container mx-auto px-4 py-12 max-w-5xl">
-          <h1 className="text-3xl md:text-4xl font-bold text-blue-900 mb-8">À propos de VigilanceFrance</h1>
-          
+          <h1 className="text-3xl md:text-4xl font-bold text-white mb-8">
+            About Sentinelle
+          </h1>
+
           <section className="mb-12">
-            <h2 className="text-2xl font-semibold text-blue-800 mb-4">Notre Mission</h2>
-            <p className="text-gray-700 mb-4">
-              VigilanceFrance a été créée avec une mission simple mais essentielle : permettre aux citoyens de participer activement à la sécurité de leur environnement. 
-              Notre plateforme collaborative vise à cartographier en temps réel les incidents de sécurité signalés à travers la France, offrant ainsi une 
-              vision claire et précise de la situation sécuritaire dans chaque quartier.
+            <h2 className="text-2xl font-semibold text-white mb-4">Our Mission</h2>
+            <p className="mb-4">
+              Sentinelle was created with a simple but essential goal: empower citizens to actively participate in the safety of their environment. 
+              Our collaborative platform maps incidents in real time, providing a clear and precise overview of public safety in every neighborhood.
             </p>
-            <p className="text-gray-700">
-              Nous croyons fermement que l'information partagée est un outil puissant pour renforcer la sécurité collective. En donnant aux citoyens 
-              les moyens de signaler et de consulter les incidents, nous contribuons à créer des communautés plus vigilantes et mieux préparées.
+            <p>
+              We strongly believe that shared information is a powerful tool to strengthen collective security. By giving citizens the ability to report and monitor incidents, 
+              we help create more vigilant and prepared communities.
             </p>
           </section>
-          
+
           <section className="mb-12">
-            <h2 className="text-2xl font-semibold text-blue-800 mb-4">Notre Histoire</h2>
-            <p className="text-gray-700 mb-4">
-              Fondée en 2023 par une équipe de professionnels passionnés par la technologie et la sécurité publique, VigilanceFrance est née de 
-              la conviction que les citoyens peuvent jouer un rôle actif dans la prévention des délits et la promotion de la sécurité.
+            <h2 className="text-2xl font-semibold text-white mb-4">Our Story</h2>
+            <p className="mb-4">
+              Founded in 2023 by a team passionate about technology and public safety, Sentinelle was born from the belief that citizens can play an active role in crime prevention 
+              and promoting security.
             </p>
-            <p className="text-gray-700">
-              Face à la montée des préoccupations sécuritaires et à l'évolution constante des défis urbains, nous avons voulu créer un outil 
-              qui met la technologie moderne au service de la sécurité quotidienne. Depuis, notre plateforme n'a cessé d'évoluer, intégrant 
-              les retours des utilisateurs et les dernières innovations technologiques.
+            <p>
+              In response to growing safety concerns and the evolving challenges of urban life, we wanted to create a tool that leverages modern technology for daily security. 
+              Since then, our platform has continuously evolved, incorporating user feedback and the latest technological innovations.
             </p>
           </section>
-          
+
           <section className="mb-12">
-            <h2 className="text-2xl font-semibold text-blue-800 mb-4">Nos Valeurs</h2>
+            <h2 className="text-2xl font-semibold text-purple-400 mb-4">Our Values</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-white p-6 rounded-lg shadow-md">
-                <h3 className="text-xl font-medium text-blue-700 mb-2">Transparence</h3>
-                <p className="text-gray-700">Nous croyons à l'importance d'une information claire et vérifiée. Notre processus de modération 
-                assure que les données partagées sur notre plateforme sont fiables et pertinentes.</p>
+              <div className="bg-gray-800 p-6 rounded-lg shadow-md">
+                <h3 className="text-xl font-medium text-purple-300 mb-2">Transparency</h3>
+                <p>
+                  We believe in clear and verified information. Our moderation process ensures that the data shared on the platform is reliable and relevant.
+                </p>
               </div>
-              
-              <div className="bg-white p-6 rounded-lg shadow-md">
-                <h3 className="text-xl font-medium text-blue-700 mb-2">Confidentialité</h3>
-                <p className="text-gray-700">La protection des données personnelles est au cœur de nos préoccupations. Tous les signalements 
-                sont anonymisés et nous respectons scrupuleusement les normes les plus strictes en matière de confidentialité.</p>
+
+              <div className="bg-gray-800 p-6 rounded-lg shadow-md">
+                <h3 className="text-xl font-medium text-purple-300 mb-2">Privacy</h3>
+                <p>
+                  Protecting personal data is a core concern. All reports are anonymized, and we strictly follow the highest standards of privacy protection.
+                </p>
               </div>
-              
-              <div className="bg-white p-6 rounded-lg shadow-md">
-                <h3 className="text-xl font-medium text-blue-700 mb-2">Engagement citoyen</h3>
-                <p className="text-gray-700">Nous valorisons la participation active de chaque citoyen à la construction d'un environnement 
-                plus sûr. Votre vigilance est la première ligne de défense contre l'insécurité.</p>
+
+              <div className="bg-gray-800 p-6 rounded-lg shadow-md">
+                <h3 className="text-xl font-medium text-purple-300 mb-2">Civic Engagement</h3>
+                <p>
+                  We value active citizen participation in building a safer environment. Your vigilance is the first line of defense against insecurity.
+                </p>
               </div>
-              
-              <div className="bg-white p-6 rounded-lg shadow-md">
-                <h3 className="text-xl font-medium text-blue-700 mb-2">Innovation</h3>
-                <p className="text-gray-700">Nous investissons continuellement dans l'amélioration de notre plateforme pour offrir une 
-                expérience utilisateur optimale et des fonctionnalités adaptées aux enjeux contemporains.</p>
+
+              <div className="bg-gray-800 p-6 rounded-lg shadow-md">
+                <h3 className="text-xl font-medium text-purple-300 mb-2">Innovation</h3>
+                <p>
+                  We continuously invest in improving our platform to provide an optimal user experience and features adapted to contemporary challenges.
+                </p>
               </div>
             </div>
           </section>
-          
+
           <section className="mb-12">
-            <h2 className="text-2xl font-semibold text-blue-800 mb-4">Notre Équipe</h2>
-            <p className="text-gray-700 mb-4">
-              Derrière VigilanceFrance se trouve une équipe diversifiée de professionnels de la sécurité, de développeurs, de data scientists 
-              et d'experts en communication. Cette diversité de compétences nous permet d'aborder la question de la sécurité sous différents angles 
-              et d'apporter des solutions innovantes.
+            <h2 className="text-2xl font-semibold text-purple-400 mb-4">Our Team</h2>
+            <p className="mb-4">
+              Behind Sentinelle is a diverse team of security professionals, developers, data scientists, and communication experts. This diversity allows us to approach safety from multiple angles and deliver innovative solutions.
             </p>
-            <p className="text-gray-700">
-              Nous travaillons en étroite collaboration avec des experts du secteur et des autorités locales pour garantir que notre plateforme 
-              répond aux besoins réels en matière de sécurité publique.
+            <p>
+              We work closely with sector experts and local authorities to ensure the platform meets real public safety needs.
             </p>
           </section>
-          
+
           <section>
-            <h2 className="text-2xl font-semibold text-blue-800 mb-4">Rejoignez-nous</h2>
-            <p className="text-gray-700 mb-4">
-              Votre participation est essentielle pour faire de VigilanceFrance un outil toujours plus efficace. En signalant les incidents, 
-              en partageant vos observations ou en proposant des améliorations, vous contribuez directement à renforcer la sécurité de votre quartier 
-              et à améliorer notre service.
+            <h2 className="text-2xl font-semibold text-purple-400 mb-4">Join Us</h2>
+            <p className="mb-4">
+              Your participation is essential to make Sentinelle a more effective tool. By reporting incidents, sharing observations, or suggesting improvements, you directly help reinforce the safety of your neighborhood and improve our service.
             </p>
-            <p className="text-gray-700">
-              Nous sommes toujours à l'écoute de vos suggestions et questions. N'hésitez pas à nous contacter via notre page dédiée ou à nous suivre 
-              sur les réseaux sociaux pour rester informés des dernières actualités.
+            <p>
+              We are always open to your suggestions and questions. Feel free to contact us through our dedicated page or follow us on social media to stay updated.
             </p>
           </section>
         </div>
       </main>
+
       <Footer />
     </>
   );

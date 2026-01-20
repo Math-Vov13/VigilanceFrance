@@ -2,10 +2,15 @@ import { Link } from 'react-router-dom';
 import { Navbar } from '../components/layout/Navbar';
 import { Footer } from '../components/layout/Footer';
 import { Button } from '../components/ui/button';
-import { MapPin, FileWarning, UserCheck, ArrowRight } from 'lucide-react';
+import { DirectionAwareHover } from "../components/ui/direction-aware-hover";
+import { MapPin, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function Home() {
+  const imageUrl1 = '/images/image1.jpg';
+  const imageUrl2 = '/images/image2.jpg';
+  const imageUrl3 = '/images/image3.jpg';
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-950 dark">
       <Navbar />
@@ -27,33 +32,30 @@ export default function Home() {
               transition={{ duration: 0.6 }}
             >
               <span className="inline-block mb-4 px-4 py-2 bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-500/30 rounded-full text-sm text-blue-300">
-                Plateforme citoyenne collaborative
+                Community-Powered Intelligence
               </span>
               
               <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight text-white">
-                Suivez les incidents
-                <span className="block mt-2 bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent space-x-4">
-                  <span className='text-blue-400'>partout</span> 
-                  <span className='text-white'>en</span>
-                  <span className='text-red-500'>France</span>
+                Track every incident happening
+                <span className="block mt-2 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-100 bg-clip-text text-transparent">
+                  in real time.
                 </span>
               </h1>
 
               <p className="text-xl text-gray-400 mb-8 max-w-2xl mx-auto">
-                Une plateforme interactive pour cartographier les événements en temps réel 
-                et améliorer la sécurité collective.
+                An interactive platform to map global incidents in real time and enhance collective safety.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link to="/map">
-                  <Button size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white px-8 py-6">
-                    Commencer
+                  <Button size="lg" className="default">
+                    Get Started
                     <ArrowRight className="ml-2 w-5 h-5" />
                   </Button>
                 </Link>
                 <Link to="/about">
-                  <Button size="lg" variant="outline" className="border-gray-700 hover:bg-gray-800 text-gray-300 px-8 py-6">
-                    En savoir plus
+                  <Button size="lg" variant="outline" className="border-gray-700 hover:bg-gray-800 text-gray-300">
+                    Learn More
                   </Button>
                 </Link>
               </div>
@@ -64,7 +66,7 @@ export default function Home() {
                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 border-2 border-gray-900"></div>
                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-pink-500 to-red-500 border-2 border-gray-900"></div>
                 </div>
-                <span className="text-gray-400">+50 000 utilisateurs actifs</span>
+                <span className="text-gray-400">+50 000 active users</span>
               </div>
             </motion.div>
           </div>
@@ -82,71 +84,42 @@ export default function Home() {
             transition={{ duration: 0.6 }}
           >
             <h2 className="text-3xl md:text-4xl font-bold mb-4 text-white">
-              Comment ça <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">fonctionne</span>
+              How does it<span className="bg-gradient-to-r from-gray-200 via-gray-300 to-gray-100 bg-clip-text text-transparent"> work</span>
             </h2>
-            <p className="text-gray-400 text-lg">Trois étapes simples pour contribuer</p>
+            <p className="text-gray-400 text-lg">Three simple steps to contribute</p>
           </motion.div>
           
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            <motion.div 
-              className="p-8 rounded-2xl bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700/50 hover:border-purple-500/50 transition-all duration-300"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.2, duration: 0.5 }}
-            >
-              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center mb-6">
-                <UserCheck className="w-7 h-7 text-white" />
-              </div>
-              <h3 className="text-xl font-semibold mb-3 text-white">Créez un compte</h3>
-              <p className="text-gray-400">
-                Inscrivez-vous gratuitement pour contribuer et suivre les incidents
-              </p>
-            </motion.div>
-
-            <motion.div 
-              className="p-8 rounded-2xl bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700/50 hover:border-blue-500/50 transition-all duration-300"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.1, duration: 0.5 }}
-            >
-              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center mb-6">
-                <MapPin className="w-7 h-7 text-white" />
-              </div>
-              <h3 className="text-xl font-semibold mb-3 text-white">Visualisez la carte</h3>
-              <p className="text-gray-400">
-                Consultez en temps réel les incidents signalés avec CesiumJS
-              </p>
-            </motion.div>
-            
-            <motion.div 
-              className="p-8 rounded-2xl bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700/50 hover:border-pink-500/50 transition-all duration-300"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.3, duration: 0.5 }}
-            >
-              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-pink-500 to-pink-600 flex items-center justify-center mb-6">
-                <FileWarning className="w-7 h-7 text-white" />
-              </div>
-              <h3 className="text-xl font-semibold mb-3 text-white">Signalez un incident</h3>
-              <p className="text-gray-400">
-                Ajoutez des informations précises des événements que vous constatez
-              </p>
-            </motion.div>
+            <div className="h-[40rem] relative  flex items-center justify-center">
+              <DirectionAwareHover imageUrl={imageUrl1}>
+                <p className="font-bold text-xl">Create an account</p>
+                <p className="font-normal text-sm">Sign up for free to contribute and track incidents</p>
+              </DirectionAwareHover>
+            </div>
+            <div className="h-[40rem] relative  flex items-center justify-center">
+              <DirectionAwareHover imageUrl={imageUrl2}>
+                <p className="font-bold text-xl">Visualize the map</p>
+                <p className="font-normal text-sm">View reported incidents in real-time with Google Maps integration</p>
+              </DirectionAwareHover>
+            </div>
+            <div className="h-[40rem] relative  flex items-center justify-center">
+              <DirectionAwareHover imageUrl={imageUrl3}>
+                <p className="font-bold text-xl">Report an incident</p>
+                <p className="font-normal text-sm">Add detailed information about the events you observe</p>
+              </DirectionAwareHover>
+            </div>
           </div>
           
           <motion.div 
-            className="mt-16 text-center"
+            className="mt-5 text-center"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.4, duration: 0.5 }}
           >
             <Link to="/map">
-              <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white px-8 py-6 text-lg rounded-full">
-                Explorer la carte
+              <Button size="lg" className="default">
+                Explore the Map
                 <MapPin className="ml-2 h-5 w-5" />
               </Button>
             </Link>

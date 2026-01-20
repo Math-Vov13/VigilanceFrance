@@ -4,6 +4,7 @@ import { Button } from '../ui/button';
 import { X, MapPin, ArrowUp, Share2, CheckCircle } from 'lucide-react';
 import { CommentSection } from './CommentSection';
 import { incidentTypes, severityLevels } from '../../constants/constants';
+import { toast } from '../ui/use-toast';
 
 interface IncidentSidebarProps {
   incident: Incident;
@@ -61,10 +62,10 @@ export function IncidentSidebar({
       case 'copy':
         try {
           await navigator.clipboard.writeText(url);
-          alert('Lien copié dans le presse-papier!');
+          toast({ title: 'Lien copié dans le presse-papiers', duration: 3000 });
         } catch (err) {
           console.error('Error copying link:', err);
-          alert('Impossible de copier le lien. Veuillez réessayer.');
+          toast({ title: 'Impossible de copier le lien. Veuillez réessayer.', duration: 3000 });
         }
         break;
       case 'twitter':
@@ -133,10 +134,10 @@ export function IncidentSidebar({
                     ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50' 
                     : 'bg-gray-700 text-gray-300 border border-gray-600'
               }`}>
-                {incident.status === 'active' && 'En cours'}
-                {incident.status === 'verified' && 'Vérifié'}
-                {incident.status === 'resolved' && 'Résolu'}
-                {incident.status === 'unverified' && 'Non vérifié'}
+                {incident.status === 'active' && 'Ongoing'}
+                {incident.status === 'verified' && 'Verified'}
+                {incident.status === 'resolved' && 'Resolved'}
+                {incident.status === 'unverified' && 'Unverified'}
               </span>
             )}
           </div>

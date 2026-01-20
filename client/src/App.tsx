@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Home from './pages/Home';
 import Auth from './pages/Auth';
 import MapPage from './pages/Map';
+import MonitoringPage from './pages/Monitoring';
 import About from './pages/more/About';
 import FAQ from './pages/more/FAQ';
 import Terms from './pages/more/Terms';
@@ -33,6 +34,15 @@ function App() {
             element={
               <ProtectedRoute redirectPath='/auth'>
                 <MapPage />
+              </ProtectedRoute>
+            } 
+          />
+          {/* Protected Monitoring Route - requires authentication */}
+          <Route 
+            path="/monitoring" 
+            element={
+              <ProtectedRoute redirectPath='/auth'>
+                <MonitoringPage />
               </ProtectedRoute>
             } 
           />

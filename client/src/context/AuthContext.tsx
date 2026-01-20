@@ -11,6 +11,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [skipInitialization, setSkipInitialization] = useState(false);
 
   const refreshAuthToken = useCallback(async (): Promise<boolean> => {
     try {
@@ -39,10 +40,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const initializeAuth = async () => {
       console.log('🚀 Starting auth initialization...');
-      
+
+      // Skip initialization if user was just authenticated (prevents duplicate validation)
+      if (skipInitialization) {
+        console.log('⏭️ Skipping initialization - user already authenticated');
+        setLoading(false);
+        setIsInitialized(true);
+        return;
+      }
+
       // Check if refresh token exists before attempting verification
       const refreshToken = tokenService.getRefreshToken();
-      
+
       if (!refreshToken) {
         // No tokens = user is not logged in, which is fine for public pages
         console.log('ℹ️ No refresh token found - user not authenticated');
@@ -122,7 +131,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     initializeAuth();
-  }, [refreshAuthToken]);
+  }, [refreshAuthToken, skipInitialization]);
 
   const login = useCallback(async (email: string, password: string): Promise<ApiResponse<User>> => {
     setLoading(true);
@@ -130,10 +139,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     try {
       const { data } = await authApi.login(email, password);
-      
-      if (!data._rft) throw new Error('Échec de la connexion');
+      console.log('🔍 Login Response:', data);
+
+      if (!data._rft) {
+        console.error('❌ No refresh token in login response!', data);
+        throw new Error('Échec de la connexion');
+      }
 
       tokenService.setRefreshToken(data._rft);
+      console.log('✅ Login: Refresh token stored:', data._rft);
 
       const userObject: User = {
         _id: data.user,
@@ -144,13 +158,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       };
 
       setUser(userObject);
-      
+
       try {
         await new Promise(resolve => setTimeout(resolve, 100));
-        
+
         const profileResponse = await authApi.verifyToken();
         const userData = profileResponse.data?.data;
-        
+
         if (userData?._id || userData?._id) {
           const userId = userData._id || userData._id;
           const updatedUser = {
@@ -162,12 +176,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             profileImage: userData.profileImage,
           };
           setUser(updatedUser);
+          setSkipInitialization(true); // Prevent duplicate validation on next mount
+          setIsInitialized(true);
           return { success: true, message: 'Connexion réussie', data: updatedUser };
         }
       } catch (profileErr) {
         console.error('Failed to fetch profile after login:', profileErr);
       }
-      
+
+      setSkipInitialization(true); // Prevent duplicate validation on next mount
+      setIsInitialized(true);
       return { success: true, message: 'Connexion réussie', data: userObject };
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erreur lors de la connexion';
@@ -185,10 +203,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     try {
       const { data } = await authApi.register(userData);
-      if (!data._rft) throw new Error('Échec de l\'inscription');
+      console.log('🔍 Register Response:', data);
+
+      if (!data._rft) {
+        console.error('❌ No refresh token in register response!', data);
+        throw new Error('Échec de l\'inscription');
+      }
 
       tokenService.setRefreshToken(data._rft);
-      
+      console.log('✅ Register: Refresh token stored:', data._rft);
+
       const userObject: User = {
         _id: data.user,
         firstName: userData.firstName,
@@ -196,8 +220,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         email: userData.email,
         profileImage: userData.profileImage,
       };
-      
+
       setUser(userObject);
+      setSkipInitialization(true); // Prevent duplicate validation on next mount
+      setIsInitialized(true);
       return { success: true, message: 'Inscription réussie', data: userObject };
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erreur lors de l\'inscription';
@@ -222,8 +248,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Always clear local state and tokens
       tokenService.clearRefreshToken();
       setUser(null);
+      setSkipInitialization(false); // Reset flag so next login can re-validate
       setLoading(false);
-      
+
       // Optional: Force reload to clear any remaining cookies
       // Uncomment if cookie clearing issues persist
       // setTimeout(() => window.location.href = '/auth', 100);
@@ -236,8 +263,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     try {
       const { data } = await providerFn(tokenOrCode);
-      tokenService.setRefreshToken(data.data?.refreshToken ?? '');
+      console.log('🔍 OAuth Response:', data);
+
+      // Extract refresh token from response
+      const refreshToken = data.data?.refreshToken || data._rft;
+      console.log('🔑 Refresh Token extracted:', refreshToken);
+
+      if (!refreshToken) {
+        console.error('❌ No refresh token in response!', data);
+        throw new Error('No refresh token received');
+      }
+
+      tokenService.setRefreshToken(refreshToken);
+      console.log('✅ Refresh token stored in localStorage');
+
       setUser(data.data?.user ?? null);
+      setSkipInitialization(true); // ✅ Prevent duplicate validation - OAuth already returned full user data
+      setIsInitialized(true);
+      console.log('✅ OAuth complete - skipping duplicate initialization');
       return { success: data.success, message: data.message, data: data.data?.user };
     } catch (err) {
       const msg = (err as AxiosError<ApiResponse<null>>).response?.data?.message ?? errorMessage;
