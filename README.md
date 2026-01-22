@@ -123,13 +123,13 @@ kubectl apply -f k8s/microservices/
 kubectl get pods -n vigilance-france
 ```
 
-**screenshot: Status des pods Kubernetes montrant tous les services en Running**
+![Vérifie les pods existant dans vigilance-france](assets/images/screenshot1.png)
 
 ```bash
 kubectl logs -f <pod-name> -n vigilance-france
 ```
 
-**screenshot: Logs d'un service montrant la connexion réussie à MongoDB et Redis**
+![Description](assets/images/screenshot2.png)
 
 ### 6. Accéder à l'application
 
@@ -163,9 +163,9 @@ yarn install
 yarn dev
 ```
 
-**screenshot: Page d'accueil de l'application**
+![Description](assets/images/screenshot3.png)
 
-**screenshot: Page de connexion avec les boutons OAuth (Google/GitHub)**
+![Description](assets/images/screenshot4.png)
 
 ### Signaler un incident
 
@@ -175,9 +175,9 @@ yarn dev
 4. Ajouter une description
 5. Soumettre
 
-**screenshot: Interface de signalement d'incident avec la carte interactive**
+![Description](assets/images/screenshot5.png)
 
-**screenshot: Carte avec plusieurs incidents affichés avec leurs icônes**
+![Description](assets/images/screenshot6.png)
 
 ### API Endpoints
 
@@ -201,7 +201,7 @@ yarn dev
 #### Notifs Service
 - `POST /notify` - Envoyer une notification
 
-**screenshot: Réponse JSON du endpoint /health d'un service**
+![Description](assets/images/screenshot7.png)
 
 ## Monitoring
 
@@ -218,16 +218,14 @@ kubectl get services -n vigilance-france
 kubectl logs -f <pod-name> -n vigilance-france
 ```
 
-**screenshot: Liste des services Kubernetes avec leurs ports**
-
 ### Tester la connectivité
 
 ```bash
 # Depuis l'API Gateway vers un microservice
-kubectl exec -it <api-gateway-pod> -n vigilance-france -- wget -O- http://auth-service:3001/health
+kubectl exec -it <api-gateway-pod> -n vigilance-france -- wget -O- http://auth-service:80/health
 ```
 
-**screenshot: Test de connectivité réussi entre services**
+![Description](assets/images/screenshot8.png)
 
 ## Troubleshooting
 

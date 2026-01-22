@@ -6,6 +6,7 @@ import { RedisClientType } from 'redis';
 import morgan from 'morgan';
 import cors from 'cors';
 import axios from 'axios';
+import os from 'os';
 
 import { no_health_check } from "./middlewares/protect_healthcheck";
 import { rate_limiter } from "./middlewares/rate_limiter";
@@ -55,6 +56,26 @@ app.use(
     })
 );
 
+
+// Health Check Endpoint
+app.get('/health', (req, res) => {
+    res.setHeader("Cache-Control", "no-cache");
+    res.json({
+        "version": process.env.CONT_IMG_VER || "N/A",
+        "status": 'OK',
+        "hostname": os.hostname(),
+        "versions": process.versions,
+        "process": {
+            "uptime": process.uptime(),
+            "memoryUsage": process.memoryUsage(),
+            "platform": process.platform,
+            "arch": process.arch,
+            "title": process.title
+        },
+        "cpus": os.cpus(),
+        "network": os.networkInterfaces()
+    });
+});
 
 // ENDPOINTS
 app.use('/v1/auth', rate_limiter(redisClient as RedisClientType, "4r/1s"), no_health_check, createProxyMiddleware({ target: 'http://auth-service:80', changeOrigin: true }));
